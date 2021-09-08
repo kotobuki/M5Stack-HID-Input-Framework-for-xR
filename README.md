@@ -63,7 +63,19 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 - When a Ranging Sensor Unit is connected, you can't use a Joystick Unit nor Gas Sensor Unit.
 - To change the connection, double-click the power button on the left side of the M5Stack controller to turn off the power (you cannot turn it off while it is connected to a USB port).
 
-## How to test
+## How to try
+
+### Download
+
+1. Download M5Burner for your platform from [the official website](https://docs.m5stack.com/en/download)
+2. Extract and launch the M5Burner (move to your Applications folder before launching on macOS)
+3. Choose the serial port in the `COM` menu on the top-left corner
+4. Choose "HID_Input_Framework_for_xR" from the projects
+5. Click on the `Download` button of the project
+6. Once finished downloading, the `Download` button becomes the `Burn` button
+7. Click on the `Burn` button to burn the firmware
+
+### Test
 
 1. Choose a pattern from the table above and connect Unit(s) to your M5Stack controller (e.g., M5Stack FIRE)
 2. Power on your M5Stack controller
@@ -76,7 +88,7 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 
 [![STYLY_marker](images/STYLY_marker.png)](https://gallery.styly.cc/scene/9b69aa0b-9ff2-4993-971b-2f8a78c7a347)
 
-### How to setup
+### Setup
 
 #### PORT B
 
