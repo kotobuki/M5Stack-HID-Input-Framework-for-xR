@@ -156,14 +156,14 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 
 ### Buttons channel
 
-| No. | Name  | Key |
-|:----|:------|:----|
-| 1   | Fire1 | v   |
-| 2   | Fire2 | b   |
-| 3   | Fire3 | f   |
-| 4   | Jump  | g   |
-| 5   |       | r   |
-| 6   |       | t   |
+| No. | Name  | Key | Assigned input     |    
+|:----|:------|:----|:-------------------|
+| 1   | Fire1 | v   | Dual Button - Red  |
+| 2   | Fire2 | b   | Dual Button - Blue |
+| 3   | Fire3 | f   | Touch Sensor - CH0 |
+| 4   | Jump  | g   | Touch Sensor - CH1 |
+| 5   |       | r   | Touch Sensor - CH2 |
+| 6   |       | t   | Touch Sensor - CH3 |
 
 ## Requirements (for developers)
 
