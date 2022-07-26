@@ -1,9 +1,13 @@
 #include <Adafruit_MPR121.h>
 #include <Adafruit_SGP30.h>
 #include <BleKeyboard.h>
+#include <DFRobot_PAJ7620U2.h>
 #include <M5Stack.h>
 #include <Preferences.h>
+#include <Servo.h>
 #include <VL53L0X.h>
+#include <WebServer.h>
+#include <WiFi.h>
 #include <Wire.h>
 #include <driver/adc.h>
 #include <stdio.h>
@@ -25,6 +29,11 @@ const int ECO2_RANGE_MAX = 2000;
 const int UNIT_NONE = 0;
 const int UNIT_DUAL_BUTTON = 1;
 const int UNIT_LIGHT = 2;
+const int UNIT_SERVO = 3;
+const int UNIT_VIBRATOR = 4;
+const int UNIT_FIRST = UNIT_NONE;
+const int UNIT_LAST = UNIT_VIBRATOR;
+const int SERVO_PIN = PIN_PORT_B_B;
 
 // Unit related variables
 VL53L0X rangingSensor;
@@ -32,13 +41,18 @@ Adafruit_SGP30 gasSensor;
 MFRC522 rfidReader(I2C_ADDR_MFRC522);
 String rfidTagUid[4];
 Adafruit_MPR121 touchSensor = Adafruit_MPR121();
+DFRobot_PAJ7620U2 gestureSensor;
+Servo servo;
 bool isDualButtonConnected = false;
 bool isLightSensorConnected = false;
+bool isServoConnected = false;
+bool isVibratorConnected = false;
 bool isJoystickConnected = false;
 bool isRangingSensorConnected = false;
 bool isGasSensorConnected = false;
 bool isRfidReaderConnected = false;
 bool isTouchSensorConnected = false;
+bool isGestureSensorConnected = false;
 int unitOnPortB = UNIT_NONE;
 int distRangeMin = DIST_RANGE_MIN;
 int distRangeMax = DIST_RANGE_MAX;
@@ -91,6 +105,56 @@ BleKeyboard bleKeyboard("alt. controller");
 bool isConnected = false;
 bool isSending = false;
 
+// Web server related variables
+WebServer server(80);
+
+void handleOutput() {
+  if (server.args() == 1 && server.argName(0).equals("val")) {
+    int val = server.arg(0).toInt();
+
+    switch (unitOnPortB) {
+      // val: servo angle in degree, between 0 and 180
+      case UNIT_SERVO:
+        servo.write(val);
+        break;
+
+      // val: on duration in ms, between 0 and 100
+      case UNIT_VIBRATOR:
+        val = constrain(val, 0, 100);
+        digitalWrite(PIN_PORT_B_B, HIGH);
+        delay(val);
+        digitalWrite(PIN_PORT_B_B, LOW);
+        break;
+
+      default:
+        server.send(404, "text/plain",
+                    "Requests are only accepted when SERVO or VIBRATOR is "
+                    "selected for port B.");
+        return;
+        break;
+    }
+  } else {
+    server.send(404, "text/plain", "Bad Request");
+    return;
+  }
+  server.send(200, "text/plain", "OK");
+}
+
+void handleNotFound() {
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i = 0; i < server.args(); i++) {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+}
+
 void setup() {
   // A workaround to avoid noise regarding Button A
   adc_power_acquire();
@@ -100,6 +164,30 @@ void setup() {
   M5.Lcd.fillScreen(BLACK);
   M5.Lcd.setTextColor(GREEN, BLACK);
   M5.Lcd.setTextSize(2);
+
+  // https://docs.espressif.com/projects/arduino-esp32/en/latest/api/wifi.html#usestaticbuffers
+  WiFi.useStaticBuffers(true);
+
+  WiFi.mode(WIFI_STA);
+
+  if (M5.BtnA.isPressed()) {
+    WiFi.beginSmartConfig();
+
+    M5.Lcd.setCursor(10, 10);
+    M5.Lcd.print("Waiting for SmartConfig");
+
+    while (!WiFi.smartConfigDone()) {
+      delay(500);
+      M5.Lcd.print(".");
+
+      if (30000 < millis()) {
+        ESP.restart();
+      }
+    }
+    M5.Lcd.clear();
+  } else {
+    WiFi.begin();
+  }
 
   preferences.begin("alt. controller", false);
   unitOnPortB = preferences.getInt("unitOnPortB", UNIT_NONE);
@@ -115,9 +203,6 @@ void setup() {
 
   updateFlagsRegardingPortB();
 
-  pinMode(PIN_PORT_B_A, INPUT);
-  pinMode(PIN_PORT_B_B, INPUT);
-
   // Disable the speaker noise
   dacWrite(25, 0);
 
@@ -131,6 +216,11 @@ void setup() {
 
   if (touchSensor.begin(I2C_ADDR_MPR121)) {
     isTouchSensorConnected = true;
+  }
+
+  if (gestureSensor.begin() == 0) {
+    gestureSensor.setGestureHighRate(true);
+    isGestureSensorConnected = true;
   }
 
   rangingSensor.setTimeout(500);
@@ -157,6 +247,23 @@ void setup() {
   M5.Lcd.print("Bluetooth: Not connected");
 
   drawButtons(currentScreenMode);
+
+  unsigned long startTime = millis();
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    unsigned long elapsedTime = millis();
+    if (elapsedTime > 10000) {
+      break;
+    }
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    server.on("/", []() { server.send(200, "text/plain", "Hello from RE:"); });
+    server.on("/output", handleOutput);
+    server.onNotFound(handleNotFound);
+
+    server.begin();
+  }
 }
 
 void loop() {
@@ -168,6 +275,10 @@ void loop() {
 
   isConnected = bleKeyboard.isConnected();
   bool requestToSend = isConnected && isSending;
+
+  if (WiFi.status() == WL_CONNECTED) {
+    server.handleClient();
+  }
 
   if (isJoystickConnected) {
     handleJoystick(requestToSend);
@@ -189,6 +300,10 @@ void loop() {
     handleRangingSensor(requestToSend);
   } else if (isLightSensorConnected) {
     handleAnalogInput(requestToSend);
+  }
+
+  if (isGestureSensorConnected) {
+    handleGestureSensor(requestToSend);
   }
 
   if (currentScreenMode == SCREEN_MAIN) {
@@ -220,56 +335,56 @@ void handleButtons() {
 
   if (M5.BtnA.wasPressed()) {
     switch (currentScreenMode) {
-    case SCREEN_MAIN:
-      currentScreenMode = SCREEN_PREFS_SELECT;
-      M5.Lcd.clear(TFT_BLACK);
-      drawButtons(currentScreenMode);
-      break;
-    case SCREEN_PREFS_SELECT:
-      currentScreenMode = SCREEN_MAIN;
-      M5.Lcd.clear(TFT_BLACK);
-      drawButtons(currentScreenMode);
-      break;
-    case SCREEN_PREFS_EDIT:
-      switch (currentMenuItem) {
-      case 0:
-        unitOnPortB = unitOnPortB - 1;
-        if (unitOnPortB < 0) {
-          unitOnPortB = UNIT_LIGHT;
+      case SCREEN_MAIN:
+        currentScreenMode = SCREEN_PREFS_SELECT;
+        M5.Lcd.clear(TFT_BLACK);
+        drawButtons(currentScreenMode);
+        break;
+      case SCREEN_PREFS_SELECT:
+        currentScreenMode = SCREEN_MAIN;
+        M5.Lcd.clear(TFT_BLACK);
+        drawButtons(currentScreenMode);
+        break;
+      case SCREEN_PREFS_EDIT:
+        switch (currentMenuItem) {
+          case 0:
+            unitOnPortB = unitOnPortB - 1;
+            if (unitOnPortB < 0) {
+              unitOnPortB = UNIT_LAST;
+            }
+            preferences.putInt("unitOnPortB", unitOnPortB);
+            updateFlagsRegardingPortB();
+            break;
+          case 1:
+            eCO2RangeMin = constrain((eCO2RangeMin - PREFS_MENU_INC_DEC_UNIT),
+                                     ECO2_RANGE_MIN,
+                                     eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT);
+            preferences.putInt("eCO2RangeMin", eCO2RangeMin);
+            break;
+          case 2:
+            eCO2RangeMax = constrain((eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT),
+                                     eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT,
+                                     ECO2_RANGE_MAX);
+            preferences.putInt("eCO2RangeMax", eCO2RangeMax);
+            break;
+          case 3:
+            distRangeMin = constrain((distRangeMin - PREFS_MENU_INC_DEC_UNIT),
+                                     DIST_RANGE_MIN,
+                                     distRangeMax - PREFS_MENU_INC_DEC_UNIT);
+            preferences.putInt("distRangeMin", distRangeMin);
+            break;
+          case 4:
+            distRangeMax = constrain((distRangeMax - PREFS_MENU_INC_DEC_UNIT),
+                                     distRangeMin + PREFS_MENU_INC_DEC_UNIT,
+                                     DIST_RANGE_MAX);
+            preferences.putInt("distRangeMax", distRangeMax);
+            break;
+          default:
+            break;
         }
-        preferences.putInt("unitOnPortB", unitOnPortB);
-        updateFlagsRegardingPortB();
-        break;
-      case 1:
-        eCO2RangeMin = constrain((eCO2RangeMin - PREFS_MENU_INC_DEC_UNIT),
-                                 ECO2_RANGE_MIN,
-                                 eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT);
-        preferences.putInt("eCO2RangeMin", eCO2RangeMin);
-        break;
-      case 2:
-        eCO2RangeMax = constrain((eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT),
-                                 eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT,
-                                 ECO2_RANGE_MAX);
-        preferences.putInt("eCO2RangeMax", eCO2RangeMax);
-        break;
-      case 3:
-        distRangeMin = constrain((distRangeMin - PREFS_MENU_INC_DEC_UNIT),
-                                 DIST_RANGE_MIN,
-                                 distRangeMax - PREFS_MENU_INC_DEC_UNIT);
-        preferences.putInt("distRangeMin", distRangeMin);
-        break;
-      case 4:
-        distRangeMax = constrain((distRangeMax - PREFS_MENU_INC_DEC_UNIT),
-                                 distRangeMin + PREFS_MENU_INC_DEC_UNIT,
-                                 DIST_RANGE_MAX);
-        preferences.putInt("distRangeMax", distRangeMax);
         break;
       default:
         break;
-      }
-      break;
-    default:
-      break;
     }
   }
 
@@ -277,96 +392,96 @@ void handleButtons() {
 
   if (M5.BtnC.wasPressed()) {
     switch (currentScreenMode) {
-    case SCREEN_MAIN:
-      if (isSending) {
-        isSending = false;
-        drawButtons(currentScreenMode);
-      } else {
-        isSending = true;
-        drawButtons(currentScreenMode);
-      }
-      break;
-    case SCREEN_PREFS_SELECT:
-      M5.Lcd.setCursor(0, 0 + LAYOUT_LINE_HEIGHT * currentMenuItem);
-      M5.Lcd.print(" ");
-      currentMenuItem = (currentMenuItem + 1) % PREFS_MENU_NUM_ITEMS;
-      M5.Lcd.setCursor(0, 0 + LAYOUT_LINE_HEIGHT * currentMenuItem);
-      M5.Lcd.print(">");
-      drawButtons(currentScreenMode);
-      break;
-    case SCREEN_PREFS_RFID:
-      rfidTagUid[rfidTagIdx] = "**:**:**:**";
-      putRfidTagUidString(rfidTagIdx, rfidTagUid[rfidTagIdx]);
-      isWaitingForNewRfidTag = true;
-      break;
-    case SCREEN_PREFS_EDIT:
-      switch (currentMenuItem) {
-      case 0:
-        unitOnPortB = unitOnPortB + 1;
-        if (unitOnPortB > UNIT_LIGHT) {
-          unitOnPortB = UNIT_NONE;
+      case SCREEN_MAIN:
+        if (isSending) {
+          isSending = false;
+          drawButtons(currentScreenMode);
+        } else {
+          isSending = true;
+          drawButtons(currentScreenMode);
         }
-        preferences.putInt("unitOnPortB", unitOnPortB);
-        updateFlagsRegardingPortB();
         break;
-      case 1:
-        eCO2RangeMin = constrain((eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT),
-                                 ECO2_RANGE_MIN,
-                                 eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT);
-        preferences.putInt("eCO2RangeMin", eCO2RangeMin);
+      case SCREEN_PREFS_SELECT:
+        M5.Lcd.setCursor(0, 0 + LAYOUT_LINE_HEIGHT * currentMenuItem);
+        M5.Lcd.print(" ");
+        currentMenuItem = (currentMenuItem + 1) % PREFS_MENU_NUM_ITEMS;
+        M5.Lcd.setCursor(0, 0 + LAYOUT_LINE_HEIGHT * currentMenuItem);
+        M5.Lcd.print(">");
+        drawButtons(currentScreenMode);
         break;
-      case 2:
-        eCO2RangeMax = constrain((eCO2RangeMax + PREFS_MENU_INC_DEC_UNIT),
-                                 eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT,
-                                 ECO2_RANGE_MAX);
-        preferences.putInt("eCO2RangeMax", eCO2RangeMax);
+      case SCREEN_PREFS_RFID:
+        rfidTagUid[rfidTagIdx] = "**:**:**:**";
+        putRfidTagUidString(rfidTagIdx, rfidTagUid[rfidTagIdx]);
+        isWaitingForNewRfidTag = true;
         break;
-      case 3:
-        distRangeMin = constrain((distRangeMin + PREFS_MENU_INC_DEC_UNIT),
-                                 DIST_RANGE_MIN,
-                                 distRangeMax - PREFS_MENU_INC_DEC_UNIT);
-        preferences.putInt("distRangeMin", distRangeMin);
-        break;
-      case 4:
-        distRangeMax = constrain((distRangeMax + PREFS_MENU_INC_DEC_UNIT),
-                                 distRangeMin + PREFS_MENU_INC_DEC_UNIT,
-                                 DIST_RANGE_MAX);
-        preferences.putInt("distRangeMax", distRangeMax);
+      case SCREEN_PREFS_EDIT:
+        switch (currentMenuItem) {
+          case 0:
+            unitOnPortB = unitOnPortB + 1;
+            if (unitOnPortB > UNIT_LAST) {
+              unitOnPortB = UNIT_FIRST;
+            }
+            preferences.putInt("unitOnPortB", unitOnPortB);
+            updateFlagsRegardingPortB();
+            break;
+          case 1:
+            eCO2RangeMin = constrain((eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT),
+                                     ECO2_RANGE_MIN,
+                                     eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT);
+            preferences.putInt("eCO2RangeMin", eCO2RangeMin);
+            break;
+          case 2:
+            eCO2RangeMax = constrain((eCO2RangeMax + PREFS_MENU_INC_DEC_UNIT),
+                                     eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT,
+                                     ECO2_RANGE_MAX);
+            preferences.putInt("eCO2RangeMax", eCO2RangeMax);
+            break;
+          case 3:
+            distRangeMin = constrain((distRangeMin + PREFS_MENU_INC_DEC_UNIT),
+                                     DIST_RANGE_MIN,
+                                     distRangeMax - PREFS_MENU_INC_DEC_UNIT);
+            preferences.putInt("distRangeMin", distRangeMin);
+            break;
+          case 4:
+            distRangeMax = constrain((distRangeMax + PREFS_MENU_INC_DEC_UNIT),
+                                     distRangeMin + PREFS_MENU_INC_DEC_UNIT,
+                                     DIST_RANGE_MAX);
+            preferences.putInt("distRangeMax", distRangeMax);
+            break;
+          default:
+            break;
+        }
         break;
       default:
         break;
-      }
-      break;
-    default:
-      break;
     }
   }
 
   if (M5.BtnA.pressedFor(500)) {
     if (currentScreenMode == SCREEN_PREFS_EDIT) {
       switch (currentMenuItem) {
-      case 1:
-        eCO2RangeMin = constrain((eCO2RangeMin - PREFS_MENU_INC_DEC_UNIT),
-                                 ECO2_RANGE_MIN,
-                                 eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT);
-        break;
-      case 2:
-        eCO2RangeMax = constrain((eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT),
-                                 eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT,
-                                 ECO2_RANGE_MAX);
-        break;
-      case 3:
-        distRangeMin = constrain((distRangeMin - PREFS_MENU_INC_DEC_UNIT),
-                                 DIST_RANGE_MIN,
-                                 distRangeMax - PREFS_MENU_INC_DEC_UNIT);
-        break;
-      case 4:
-        distRangeMax = constrain((distRangeMax - PREFS_MENU_INC_DEC_UNIT),
-                                 distRangeMin + PREFS_MENU_INC_DEC_UNIT,
-                                 DIST_RANGE_MAX);
-        break;
-      default:
-        break;
+        case 1:
+          eCO2RangeMin =
+              constrain((eCO2RangeMin - PREFS_MENU_INC_DEC_UNIT),
+                        ECO2_RANGE_MIN, eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT);
+          break;
+        case 2:
+          eCO2RangeMax =
+              constrain((eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT),
+                        eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT, ECO2_RANGE_MAX);
+          break;
+        case 3:
+          distRangeMin =
+              constrain((distRangeMin - PREFS_MENU_INC_DEC_UNIT),
+                        DIST_RANGE_MIN, distRangeMax - PREFS_MENU_INC_DEC_UNIT);
+          break;
+        case 4:
+          distRangeMax =
+              constrain((distRangeMax - PREFS_MENU_INC_DEC_UNIT),
+                        distRangeMin + PREFS_MENU_INC_DEC_UNIT, DIST_RANGE_MAX);
+          break;
+        default:
+          break;
       }
     }
   }
@@ -374,50 +489,50 @@ void handleButtons() {
   if (M5.BtnC.pressedFor(500)) {
     if (currentScreenMode == SCREEN_PREFS_EDIT) {
       switch (currentMenuItem) {
-      case 1:
-        eCO2RangeMin = constrain((eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT),
-                                 ECO2_RANGE_MIN,
-                                 eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT);
-        break;
-      case 2:
-        eCO2RangeMax = constrain((eCO2RangeMax + PREFS_MENU_INC_DEC_UNIT),
-                                 eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT,
-                                 ECO2_RANGE_MAX);
-        break;
-      case 3:
-        distRangeMin = constrain((distRangeMin + PREFS_MENU_INC_DEC_UNIT),
-                                 DIST_RANGE_MIN,
-                                 distRangeMax - PREFS_MENU_INC_DEC_UNIT);
-        break;
-      case 4:
-        distRangeMax = constrain((distRangeMax + PREFS_MENU_INC_DEC_UNIT),
-                                 distRangeMin + PREFS_MENU_INC_DEC_UNIT,
-                                 DIST_RANGE_MAX);
-        break;
-      default:
-        break;
+        case 1:
+          eCO2RangeMin =
+              constrain((eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT),
+                        ECO2_RANGE_MIN, eCO2RangeMax - PREFS_MENU_INC_DEC_UNIT);
+          break;
+        case 2:
+          eCO2RangeMax =
+              constrain((eCO2RangeMax + PREFS_MENU_INC_DEC_UNIT),
+                        eCO2RangeMin + PREFS_MENU_INC_DEC_UNIT, ECO2_RANGE_MAX);
+          break;
+        case 3:
+          distRangeMin =
+              constrain((distRangeMin + PREFS_MENU_INC_DEC_UNIT),
+                        DIST_RANGE_MIN, distRangeMax - PREFS_MENU_INC_DEC_UNIT);
+          break;
+        case 4:
+          distRangeMax =
+              constrain((distRangeMax + PREFS_MENU_INC_DEC_UNIT),
+                        distRangeMin + PREFS_MENU_INC_DEC_UNIT, DIST_RANGE_MAX);
+          break;
+        default:
+          break;
       }
     }
   }
 
   if (M5.BtnB.wasPressed()) {
     switch (currentScreenMode) {
-    case SCREEN_PREFS_SELECT:
-      if (currentMenuItem < PREFS_MENU_INDEX_RFID_1) {
-        currentScreenMode = SCREEN_PREFS_EDIT;
-      } else {
-        currentScreenMode = SCREEN_PREFS_RFID;
-      }
-      break;
-    case SCREEN_PREFS_RFID:
-      isWaitingForNewRfidTag = false;
-      currentScreenMode = SCREEN_PREFS_SELECT;
-      break;
-    case SCREEN_PREFS_EDIT:
-      currentScreenMode = SCREEN_PREFS_SELECT;
-      break;
-    default:
-      break;
+      case SCREEN_PREFS_SELECT:
+        if (currentMenuItem < PREFS_MENU_INDEX_RFID_1) {
+          currentScreenMode = SCREEN_PREFS_EDIT;
+        } else {
+          currentScreenMode = SCREEN_PREFS_RFID;
+        }
+        break;
+      case SCREEN_PREFS_RFID:
+        isWaitingForNewRfidTag = false;
+        currentScreenMode = SCREEN_PREFS_SELECT;
+        break;
+      case SCREEN_PREFS_EDIT:
+        currentScreenMode = SCREEN_PREFS_SELECT;
+        break;
+      default:
+        break;
     }
 
     drawButtons(currentScreenMode);
@@ -429,28 +544,62 @@ void handleButtons() {
 }
 
 void updateFlagsRegardingPortB() {
+  pinMode(PIN_PORT_B_A, INPUT);
+  pinMode(PIN_PORT_B_B, INPUT);
+
   switch (unitOnPortB) {
-  case UNIT_NONE:
-    isDualButtonConnected = false;
-    isLightSensorConnected = false;
-    break;
-  case UNIT_DUAL_BUTTON:
-    isDualButtonConnected = true;
-    isLightSensorConnected = false;
-    break;
-  case UNIT_LIGHT:
-    isDualButtonConnected = false;
-    isLightSensorConnected = true;
-    break;
-  default:
-    break;
+    case UNIT_NONE:
+      servo.detach();
+      isDualButtonConnected = false;
+      isLightSensorConnected = false;
+      isServoConnected = false;
+      isVibratorConnected = false;
+      break;
+    case UNIT_DUAL_BUTTON:
+      servo.detach();
+      isDualButtonConnected = true;
+      isLightSensorConnected = false;
+      isServoConnected = false;
+      isVibratorConnected = false;
+      break;
+    case UNIT_LIGHT:
+      servo.detach();
+      isDualButtonConnected = false;
+      isLightSensorConnected = true;
+      isServoConnected = false;
+      isVibratorConnected = false;
+      break;
+    case UNIT_SERVO:
+      servo.attach(SERVO_PIN, Servo::CHANNEL_NOT_ATTACHED);
+      isDualButtonConnected = false;
+      isLightSensorConnected = false;
+      isServoConnected = true;
+      isVibratorConnected = false;
+      break;
+    case UNIT_VIBRATOR:
+      servo.detach();
+      pinMode(PIN_PORT_B_B, OUTPUT);
+      isDualButtonConnected = false;
+      isLightSensorConnected = false;
+      isServoConnected = false;
+      isVibratorConnected = true;
+      break;
+    default:
+      break;
   }
 }
 
 void drawMainScreen() {
-  M5.Lcd.setCursor(0, 0);
-  M5.Lcd.printf("Bluetooth: %s",
-                isConnected ? "Connected    " : "Disonnected  ");
+  if (WiFi.status() == WL_CONNECTED) {
+    M5.Lcd.setCursor(0, 0);
+    M5.Lcd.printf("B: %s | W: %s",
+                  isConnected ? "<->" : "-X-",
+                  WiFi.localIP().toString().c_str());
+  } else {
+    M5.Lcd.setCursor(0, 0);
+    M5.Lcd.printf("Bluetooth: %s",
+                  isConnected ? "Connected   " : "Disconnected");
+  }
 
   M5.Lcd.setCursor(0, LAYOUT_ANALOG_CH_TOP);
   M5.Lcd.print(analogStatus);
@@ -475,17 +624,23 @@ void drawMainScreen() {
 void drawPreferencesScreen() {
   M5.Lcd.setCursor(20, 0 + LAYOUT_LINE_HEIGHT * 0);
   switch (unitOnPortB) {
-  case UNIT_NONE:
-    M5.Lcd.print("Port B: NONE       ");
-    break;
-  case UNIT_DUAL_BUTTON:
-    M5.Lcd.print("Port B: DUAL BUTTON");
-    break;
-  case UNIT_LIGHT:
-    M5.Lcd.print("Port B: LIGHT      ");
-    break;
-  default:
-    break;
+    case UNIT_NONE:
+      M5.Lcd.print("Port B: NONE       ");
+      break;
+    case UNIT_DUAL_BUTTON:
+      M5.Lcd.print("Port B: DUAL BUTTON");
+      break;
+    case UNIT_LIGHT:
+      M5.Lcd.print("Port B: LIGHT      ");
+      break;
+    case UNIT_SERVO:
+      M5.Lcd.print("Port B: SERVO      ");
+      break;
+    case UNIT_VIBRATOR:
+      M5.Lcd.print("Port B: VIBRATOR   ");
+      break;
+    default:
+      break;
   }
 
   M5.Lcd.setCursor(20, 0 + LAYOUT_LINE_HEIGHT * 1);
@@ -499,8 +654,8 @@ void drawPreferencesScreen() {
   M5.Lcd.printf("           Max: %5d", distRangeMax);
 
   for (int i = 0; i < 4; i++) {
-    M5.Lcd.setCursor(20, 0 + LAYOUT_LINE_HEIGHT *
-                                 (PREFS_MENU_INDEX_RFID_1 + i));
+    M5.Lcd.setCursor(20,
+                     0 + LAYOUT_LINE_HEIGHT * (PREFS_MENU_INDEX_RFID_1 + i));
     M5.Lcd.printf("RFID %d: %s", i + 1, rfidTagUid[i].c_str());
   }
 
@@ -657,7 +812,6 @@ void handleRangingSensor(bool updateRequested) {
   sprintf(analogStatus, "ANALOG:%2d (%4d mm)", currentValue, range);
 
   if (lastValue != currentValue) {
-
     if (updateRequested) {
       bleKeyboard.write(KEYS_FOR_ANALOG_CH[currentValue]);
     }
@@ -794,40 +948,105 @@ void handleTouchSensor(bool updateRequested) {
   lastTouched = currentlyTouched;
 }
 
+void handleGestureSensor(bool updateRequested) {
+  static unsigned long lastUpdate = 0;
+
+  DFRobot_PAJ7620U2::eGesture_t gesture = gestureSensor.getGesture();
+
+  unsigned long now = millis();
+  switch (gesture) {
+    // Supported gestures
+    case gestureSensor.eGestureRight:
+    case gestureSensor.eGestureLeft:
+    case gestureSensor.eGestureUp:
+    case gestureSensor.eGestureDown:
+    case gestureSensor.eGestureForward:
+    case gestureSensor.eGestureBackward:
+    case gestureSensor.eGestureClockwise:
+    case gestureSensor.eGestureAntiClockwise:
+    case gestureSensor.eGestureWave:
+      if (updateRequested) {
+        switch (gesture) {
+          case gestureSensor.eGestureRight:
+            bleKeyboard.write(KEY_JOYSTICK_RIGHT);
+            break;
+          case gestureSensor.eGestureLeft:
+            bleKeyboard.write(KEY_JOYSTICK_LEFT);
+            break;
+          case gestureSensor.eGestureUp:
+            bleKeyboard.write(KEY_JOYSTICK_CENTER_UP);
+            break;
+          case gestureSensor.eGestureDown:
+            bleKeyboard.write(KEY_JOYSTICK_CENTER_DOWN);
+            break;
+          case gestureSensor.eGestureForward:
+            bleKeyboard.write(KEYS_FOR_BUTTON_CH[0]);
+            break;
+          case gestureSensor.eGestureBackward:
+            bleKeyboard.write(KEYS_FOR_BUTTON_CH[1]);
+            break;
+          case gestureSensor.eGestureClockwise:
+            bleKeyboard.write(KEYS_FOR_BUTTON_CH[2]);
+            break;
+          case gestureSensor.eGestureAntiClockwise:
+            bleKeyboard.write(KEYS_FOR_BUTTON_CH[3]);
+            break;
+          case gestureSensor.eGestureWave:
+            bleKeyboard.write(KEYS_FOR_BUTTON_CH[4]);
+            break;
+
+          default:
+            break;
+        }
+      }
+      lastUpdate = now;
+      sprintf(buttonsStatus2, "Gesture: %14s",
+              gestureSensor.gestureDescription(gesture));
+      break;
+
+    // Not supported gestures and None
+    default:
+      if ((now - lastUpdate) > 1000) {
+        sprintf(buttonsStatus2, "Gesture:               ");
+      }
+      break;
+  }
+}
+
 void drawButtons(int currentScreenMode) {
   const int LAYOUT_BTN_A_CENTER = 64;
   const int LAYOUT_BTN_B_CENTER = 160;
   const int LAYOUT_BTN_C_CENTER = 256;
 
   switch (currentScreenMode) {
-  case SCREEN_MAIN:
-    if (!isSending) {
-      drawButton(LAYOUT_BTN_A_CENTER, "Setup");
-      drawButton(LAYOUT_BTN_B_CENTER, "");
-      drawButton(LAYOUT_BTN_C_CENTER, "Send");
-    } else {
-      drawButton(LAYOUT_BTN_A_CENTER, "Setup");
-      drawButton(LAYOUT_BTN_B_CENTER, "");
-      drawButton(LAYOUT_BTN_C_CENTER, "Stop");
-    }
-    break;
-  case SCREEN_PREFS_SELECT:
-    drawButton(LAYOUT_BTN_A_CENTER, "Exit");
-    drawButton(LAYOUT_BTN_B_CENTER, "Go");
-    drawButton(LAYOUT_BTN_C_CENTER, "Next");
-    break;
-  case SCREEN_PREFS_EDIT:
-    drawButton(LAYOUT_BTN_A_CENTER, "-");
-    drawButton(LAYOUT_BTN_B_CENTER, "Done");
-    drawButton(LAYOUT_BTN_C_CENTER, "+");
-    break;
-  case SCREEN_PREFS_RFID:
-    drawButton(LAYOUT_BTN_A_CENTER, "");
-    drawButton(LAYOUT_BTN_B_CENTER, "Done");
-    drawButton(LAYOUT_BTN_C_CENTER, "Reset");
-    break;
-  default:
-    break;
+    case SCREEN_MAIN:
+      if (!isSending) {
+        drawButton(LAYOUT_BTN_A_CENTER, "Setup");
+        drawButton(LAYOUT_BTN_B_CENTER, "");
+        drawButton(LAYOUT_BTN_C_CENTER, "Send");
+      } else {
+        drawButton(LAYOUT_BTN_A_CENTER, "Setup");
+        drawButton(LAYOUT_BTN_B_CENTER, "");
+        drawButton(LAYOUT_BTN_C_CENTER, "Stop");
+      }
+      break;
+    case SCREEN_PREFS_SELECT:
+      drawButton(LAYOUT_BTN_A_CENTER, "Exit");
+      drawButton(LAYOUT_BTN_B_CENTER, "Go");
+      drawButton(LAYOUT_BTN_C_CENTER, "Next");
+      break;
+    case SCREEN_PREFS_EDIT:
+      drawButton(LAYOUT_BTN_A_CENTER, "-");
+      drawButton(LAYOUT_BTN_B_CENTER, "Done");
+      drawButton(LAYOUT_BTN_C_CENTER, "+");
+      break;
+    case SCREEN_PREFS_RFID:
+      drawButton(LAYOUT_BTN_A_CENTER, "");
+      drawButton(LAYOUT_BTN_B_CENTER, "Done");
+      drawButton(LAYOUT_BTN_C_CENTER, "Reset");
+      break;
+    default:
+      break;
   }
 }
 
@@ -848,3 +1067,4 @@ void drawButton(int centerX, const String &title) {
   M5.Lcd.drawRect(rectLeft, rectTop, rectWidth, rectHeight, TFT_GREEN);
   M5.Lcd.drawCentreString(title, centerX, coordinateY, 1);
 }
+

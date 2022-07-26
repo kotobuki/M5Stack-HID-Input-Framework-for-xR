@@ -1,38 +1,26 @@
-# M5Stack HID Input Framework for xR
-
-This project is a firmware for M5Stack developed by a team of instructors for the participants of [NEWVIEW SCHOOL 2021 TAIPEI](https://newview.design/tc/school/taiwan-2021), a workshop on xR (VR/AR/MR), to enable them to create DIY controllers.
-
-The M5Stack is a toolkit that allows you to easily create various IoT projects by simply connecting sensors and other units with cables. The controller functions as a Bluetooth keyboard, sending keyboard events to the device in response to input from sensors, buttons, etc.
-
-Instead of just accepting a pre-made controller as a constraint and using it as it is, by thinking about what a suitable controller for your work should be and realizing it, you may be able to create a work that expands the concept of VR and AR.
-
----
-
-該項目是由講師團隊為參加[NEWVIEW SCHOOL 2021 台北](https://newview.design/tc/school/taiwan-2021) xR (VR/AR/MR)研討會的參與者開發的M5Stack固件，使他們能夠創建DIY控制器。
-
-M5Stack是一個工具包，讓您只需用模組連接線連接感測器和其他單元，即可輕鬆創建各種物聯網項目。控制器用作藍牙鍵盤，將鍵盤事件發送到設備以響應來自感測器、按鈕等的輸入。
-
-不再受限於既有的控制器，讓你可以創造不同體驗的控制器去實現你對VR與AR的概念及創意
-
----
-
-このプロジェクトは、xR（VR/AR/MR）に関するワークショップ「[NEWVIEW SCHOOL 2021 TAIPEI](https://newview.design/tc/school/taiwan-2021)」参加者のために講師チームが開発した、DIYでコントローラを制作できるようにするためのM5Stack用ファームウェアです。
-
-M5Stackは、センサなどのユニットをケーブルで接続するだけで簡単に多彩なIoTプロジェクトを実現できるツールキットです。M5Stackとこのファームウェアを組み合わせることにより、電子工作やプログラミングの経験がない人でも、短時間でDIYコントローラを制作できるでしょう。コントローラはBluetoothキーボードとして機能し、センサやボタンなどの入力に応じたキーボードイベントをデバイスに送信します。
-
-あらかじめ用意されたコントローラを制約条件として受け入れてそのまま用いるのでなく、自分の作品に適したコントローラはどうあるべきかから考えて実現することにより、VRやARの概念を拡張するような作品を制作できるかもしれません。
+# :construction: M5Stack-based I/O Framework for xR [Tentatively Named] :construction:
 
 ## Status
 
+:warning: Heavily work in progress; therefore, only for experimental purposes :warning:
+
 ### Supported Units
+
+#### Sensors
 
 - [Mini Dual Button Unit](https://shop.m5stack.com/collections/m5-unit/products/mini-dual-button-unit)
 - [Light Sensor Unit](https://shop.m5stack.com/collections/m5-unit/products/light-sensor-unit)
-- [I2C Joystick Unit](https://shop.m5stack.com/collections/m5-unit/products/joystick-unit)
+- [I2C Joystick Unit V1.1](https://shop.m5stack.com/collections/m5-sensor/products/i2c-joystick-unit-v1-1-mega8a)
 - [Distance Ranging Sensor Unit](https://shop.m5stack.com/products/tof-sensor-unit)
 - [TVOC/eCO2 Gas Sensor Unit](https://shop.m5stack.com/products/tvoc-eco2-gas-unit-sgp30)
-- [Mini RFID Reader/Writer Unit](https://shop.m5stack.com/products/rfid-sensor-unit)
+- [RFID 2 Unit](https://shop.m5stack.com/collections/m5-sensor/products/rfid-unit-2-ws1850s)
+- [Unit - Gesture recognition sensor](https://shop.m5stack.com/products/unit-gesture-recognition-sensor-paj7620u2)
 - [12 Key Capacitive I2C Touch Sensor V3](https://www.seeedstudio.com/Grove-12-Key-Capacitive-I2C-Touch-Sensor-V3-MPR121-p-4694.html) by Seeed Studio
+
+#### Actuators
+
+- [Servo Kit 180° Brick-compatible](https://shop.m5stack.com/collections/m5-accessories/products/servo-kit-180)
+- [Vibration Motor Unit](https://shop.m5stack.com/products/vibration-motor-unit)
 
 ### Supported platforms
 
@@ -47,6 +35,8 @@ M5Stackは、センサなどのユニットをケーブルで接続するだけ�
 
 The connected Unit(s) input is transmitted on three different channels: analog, joystick, and buttons. The analog and joystick channels can handle up to one sensor Unit input for each at once, and the buttons channel can handle up to six button inputs simultaneously.
 
+:pushpin: **We should update the following table to include the Gesture sensor, Servo and Vibrator.**
+
 | Unit           | Port | Channel  | Pattern A | Pattern B | Pattern C | Pattern D | Pattern E | Pattern F |
 |:---------------|:-----|:---------|:----------|:----------|:----------|:----------|:----------|:----------|
 | Dual Button    | B    | Buttons  | :bulb:    | :bulb:    | :bulb:    | :bulb:    |           |           |
@@ -56,6 +46,11 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 | Ranging Sensor | A    | Analog   |           |           | :bulb:    | :bulb:    |           |           |
 | Touch Sensor   | A    | Buttons  | :bulb:    |           | :bulb:    |           | :bulb:    |           |
 | RFID Reader    | A    | Buttons  |           | :bulb:    |           | :bulb:    |           | :bulb:    |
+| Gesture Sensor | A    | Joy&Btn  |           |           |           |           |           |           |
+| Servo          | B    | Webhook  |           |           |           |           |           |           |
+| Vibrator       | B    | Webhook  |           |           |           |           |           |           |
+
+- Gesture sensor is exclusive with other units using analogue or button channels.
 
 #### Notes
 
@@ -67,15 +62,27 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 
 ### Download
 
-1. Download M5Burner for your platform from [the official website](https://docs.m5stack.com/en/download)
+1. Download M5Burner v3.0 for your platform from [the official website](https://docs.m5stack.com/en/download)
 2. Extract and launch the M5Burner (move to your Applications folder before launching on macOS)
-3. Choose the serial port in the `COM` menu on the top-left corner
-4. Choose "HID_Input_Framework_for_xR" from the projects
-5. Click on the `Download` button of the project
-6. Once finished downloading, the `Download` button becomes the `Burn` button
-7. Click on the `Burn` button to burn the firmware
+3. Choose "M5Stack-based I/O Framework for xR" from the projects
+4. Click on the `Download` button of the project
+5. Once finished downloading, the `Download` button becomes the `Burn` button
+6. Click on the `Burn` button
+7. Choose the serial port in the `COM` field and click on the `Start` button to burn the firmware
 
-### Test
+### Setup Wi-Fi
+
+1. Install EspTouch for [iOS](https://apps.apple.com/app/espressif-esptouch/id1071176700) or [Android](https://github.com/EspressifApp/EsptouchForAndroid/releases/tag/v2.0.0/esptouch-v2.0.0.apk) to your smartphone
+2. Connect your smartphone to the Wi-Fi router
+3. Open your EspTouch app
+4. Input the router’s password
+5. Press the A button on your M5Stack and press the power button to reboot while keeping the A button
+6. Tap the Confirm button on the EspTouch app
+7. You will see an IP address on the screen of your M5Stack
+
+### :construction: Test :construction:
+
+:pushpin: **We should update the example scene to support new sensor and actuator Units.**
 
 1. Choose a pattern from the table above and connect Unit(s) to your M5Stack controller (e.g., M5Stack FIRE)
 2. Power on your M5Stack controller
@@ -95,7 +102,7 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 1. Press the `Setup` (A) button to enter the preferences screen
 2. Press the `Next` (C) button (if needed) to choose the `PORT B: NONE` line
 3. Press the `Go` (B) button
-4. Press the `-` (A) or `+` (C) button to be matched to the device connected to the Port B (i.e., `DUAL BUTTON` or `LIGHT`)
+4. Press the `-` (A) or `+` (C) button to be matched to the device connected to the Port B (i.e., `DUAL BUTTON`, `LIGHT`, `SERVO` or `VIBRATOR`)
 5. Press the `Done` (B) button
 6. Press the `Exit` (A) button to back to the main screen
 
@@ -116,6 +123,14 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 - Bluetooth connection status on my controller keeps switching between `Connected` and `Disconnected` when not connected. → The controller might have been paired with an old host (i.e., a PC or smartphone). If you no longer use the controller with the host, please remove the device from the host.
 
 ## Protocol
+
+```mermaid
+sequenceDiagram
+    participant S as STYLY app
+    participant M as M5Stack
+    M-->>S: keyboard events over BLE
+    S-->>M: GET HTTP Requests over Wi-Fi
+```
 
 ![keyboard-layout](images/keyboard-layout.png)
 
@@ -165,7 +180,45 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 | 5   |       | r   | Touch Sensor - CH2 |
 | 6   |       | t   | Touch Sensor - CH3 |
 
-## Requirements (for developers)
+
+### Joystick and Buttons channel (for Gesture sensor only)
+
+| Joystick   | Key |
+|:-----------|:----|
+| Up         | u   |
+| Left       | h   |
+| Right      | k   |
+| Down       | m   |
+
+| No. | Name  | Key | Assigned input          |    
+|:----|:------|:----|:------------------------|
+| 1   | Fire1 | v   | Gesture - Forward       |
+| 2   | Fire2 | b   | Gesture - Backward      |
+| 3   | Fire3 | f   | Gesture - Clockwise     |
+| 4   | Jump  | g   | Gesture - AntiClockwise |
+| 5   |       | r   | Gesture - Wave          |
+
+### :construction: Webhooks :construction:
+
+#### Common API
+
+`http:\\{ip_address}\output?val={value}`
+
+Example:
+
+`http:\\192.168.0.10\output?val=123`
+
+#### Servo
+
+`val`: servo angle in degree, between 0 and 180
+
+#### Vibrator
+
+`val`: on duration in ms, between 0 and 100
+
+## :construction: Requirements (for developers) :construction:
+
+:pushpin: **We should update the instructions below to reflect the latest changes.**
 
 ### Preparing the development environment
 
