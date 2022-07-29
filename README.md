@@ -202,11 +202,11 @@ sequenceDiagram
 
 #### Common API
 
-`http:\\{ip_address}\output?val={value}`
+`GET` `http:\\{ip_address}\output?val={value}`
 
 Example:
 
-`http:\\192.168.0.10\output?val=123`
+`GET` `http:\\192.168.0.10\output?val=123`
 
 #### Servo
 
