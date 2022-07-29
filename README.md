@@ -14,7 +14,7 @@
 - [Distance Ranging Sensor Unit](https://shop.m5stack.com/products/tof-sensor-unit)
 - [TVOC/eCO2 Gas Sensor Unit](https://shop.m5stack.com/products/tvoc-eco2-gas-unit-sgp30)
 - [RFID 2 Unit](https://shop.m5stack.com/collections/m5-sensor/products/rfid-unit-2-ws1850s)
-- [Unit - Gesture recognition sensor](https://shop.m5stack.com/products/unit-gesture-recognition-sensor-paj7620u2)
+- [Gesture recognition sensor](https://shop.m5stack.com/products/unit-gesture-recognition-sensor-paj7620u2)
 - [12 Key Capacitive I2C Touch Sensor V3](https://www.seeedstudio.com/Grove-12-Key-Capacitive-I2C-Touch-Sensor-V3-MPR121-p-4694.html) by Seeed Studio
 
 #### Actuators
@@ -24,12 +24,12 @@
 
 ### Supported platforms
 
+- iOS/iPadOS - [STYLY](https://itunes.apple.com/jp/app/id1477168256?mt=8) app
+- Android - [STYLY](https://play.google.com/store/apps/details?id=com.psychicvrlab.stylymr) app
 - Oculus Quest 2 - [STYLY](https://www.oculus.com/experiences/quest/3982198145147898/) app (from App Lab)
 - Windows - [STYLY VR](https://store.steampowered.com/app/693990/STYLYVR_PLATFORM_FOR_ULTRA_EXPERIENCE/) app
 - Windows - Chrome
 - macOS - Chrome
-- iOS/iPadOS - [STYLY](https://itunes.apple.com/jp/app/id1477168256?mt=8) app
-- Android - [STYLY](https://play.google.com/store/apps/details?id=com.psychicvrlab.stylymr) app
 
 ### Supported combinations (maximum)
 
@@ -59,7 +59,7 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 
 - If you want to connect multiple Units to port A, please connect via a [1 to 3 HUB Expansion Unit](https://shop.m5stack.com/collections/m5-unit/products/mini-hub-module).
 - When a Ranging Sensor Unit is connected, you can't use a Joystick Unit nor Gas Sensor Unit.
-- To change the connection, double-click the power button on the left side of the M5Stack controller to turn off the power (you cannot turn it off while it is connected to a USB port).
+- To change the connection, make sure to turn off the power (i.e., M5Stack Fire: double-clicking the power button, M5Stack Core 2: pressing the power button for 6 seconds). You cannot turn it off while your controller is connected to a USB port.
 
 ## How to try
 
@@ -174,7 +174,7 @@ sequenceDiagram
 
 ### Buttons channel
 
-| No. | Name  | Key | Assigned input     |    
+| No. | Name  | Key | Assigned input     |
 |:----|:------|:----|:-------------------|
 | 1   | Fire1 | v   | Dual Button - Red  |
 | 2   | Fire2 | b   | Dual Button - Blue |
@@ -182,7 +182,6 @@ sequenceDiagram
 | 4   | Jump  | g   | Touch Sensor - CH1 |
 | 5   |       | r   | Touch Sensor - CH2 |
 | 6   |       | t   | Touch Sensor - CH3 |
-
 
 ### Joystick and Buttons channel (for Gesture sensor only)
 
@@ -193,7 +192,7 @@ sequenceDiagram
 | Right      | k   |
 | Down       | m   |
 
-| No. | Name  | Key | Assigned input          |    
+| No. | Name  | Key | Assigned input          |
 |:----|:------|:----|:------------------------|
 | 1   | Fire1 | v   | Gesture - Forward       |
 | 2   | Fire2 | b   | Gesture - Backward      |
@@ -219,55 +218,41 @@ Example:
 
 `val`: on duration in ms, between 0 and 100
 
-## :construction: Requirements (for developers) :construction:
-
-:pushpin: **We should update the instructions below to reflect the latest changes.**
+## Requirements (for developers)
 
 ### Preparing the development environment
 
-- Windows
-  - English: [M5Core Quick Start - Arduino Win](https://docs.m5stack.com/en/quick_start/m5core/m5stack_core_get_started_Arduino_Windows)
-  - Chinese (simplified): [M5Core 的上手指南 - Arduino Win](https://docs.m5stack.com/zh_CN/quick_start/m5core/m5stack_core_get_started_Arduino_Windows)
-- macOS
-  - English: [M5Core Quick Start - Arduino Mac](https://docs.m5stack.com/en/quick_start/m5core/m5stack_core_get_started_Arduino_MacOS)
-  - Chinese (simplified): [M5Core 的上手指南 - Arduino Mac](https://docs.m5stack.com/zh_CN/quick_start/m5core/m5stack_core_get_started_Arduino_MacOS)
+- English: [Arduino IDE environment - M5Core](https://docs.m5stack.com/en/quick_start/m5core/arduino)
+- Chinese (simplified): [Arduino IDE 环境搭建 - M5Core](https://docs.m5stack.com/zh_CN/quick_start/m5core/arduino)
 
 ### Libraries
 
-- [M5Stack Library](https://github.com/m5stack/m5stack) by M5Stack
-- [ESP32 BLE Keyboard library](https://github.com/T-vK/ESP32-BLE-Keyboard/) by T-vK
-- [VL53L0X library for Arduino](https://github.com/pololu/vl53l0x-arduino) by Pololu
-- [Adafruit SGP30 Gas / Air Quality I2C sensor](https://github.com/adafruit/Adafruit_SGP30) by Adafruit
-- [Adafruit MPR121 Library](https://github.com/adafruit/Adafruit_MPR121) by Adafruit
+- [M5Unified](https://github.com/m5stack/M5Unified) v0.0.7 by M5Stack
+- [M5GFX](https://github.com/m5stack/M5GFX) v0.0.20 by M5Stack
+- [ESP32 BLE Keyboard library](https://github.com/T-vK/ESP32-BLE-Keyboard/) v0.3.0 by T-vK
+- [VL53L0X library for Arduino](https://github.com/pololu/vl53l0x-arduino) v1.3.1 by Pololu[^VL53L0X]
+- [Adafruit SGP30 Gas / Air Quality I2C sensor](https://github.com/adafruit/Adafruit_SGP30) v2.0.0 by Adafruit
+- [Adafruit MPR121 Library](https://github.com/adafruit/Adafruit_MPR121) v1.1.1 by Adafruit
+- [ServoESP32](https://github.com/RoboticsBrno/ServoESP32/) v1.0.3 by RoboticsBrno
+- [DFRobot_PAJ7620](https://github.com/DFRobot/DFRobot_PAJ7620U2) v1.0.1 by DFRobot
+
+[^VL53L0X]: Make sure to install the one by Pololu, not by Adafruit.
 
 ### How to install
 
 #### The ESP32 BLE Keyboard library
 
-1. Download [the ESP32 BLE Keyboard library](https://github.com/T-vK/ESP32-BLE-Keyboard/releases/download/0.2.3/ESP32-BLE-Keyboard.zip) (don’t have to extract after downloading)
+1. Download the ZIP file at the [ESP32-BLE-Keyboard v0.3.0](https://github.com/T-vK/ESP32-BLE-Keyboard/releases/tag/0.3.0) page (you don’t have to extract it after downloading)
 2. In the Arduino IDE, navigate to Sketch → Include Library → Add .ZIP Library...
 3. Select the file you just downloaded
 
 #### Other libraries
 
 1. In the Arduino IDE, navigate to Tools → Manage Libraries...
-2. Type in a part of each library (i.e., `VL53L0X`, `Adafruit SGP30`, and `Adafruit MPR121`) in the text field in the top right corner, choose the right library and press the install button
+2. Type in a part of each library (e.g., `VL53L0X`, `Adafruit SGP30` etc.) in the text field in the top right corner, choose the right library and press the install button
 3. Repeat the second step for all required libraries
-
-![VL53L0X](images/VL53L0X.png)
-
-![Adafruit SGP30](images/Adafruit_SGP30.png)
-
-![Adafruit MPR121](images/Adafruit_MPR121.png)
-
-#### Note
-
-- Regarding the VL53L0X library, please install the one by Pololu, not by Adafruit.
-- If you want to install the latest stable ESP32 SDK, please put the Stable release link described in [the Arduino core for the ESP32 project's document](https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_manager.md) and install the esp32 board package instead of the M5Stack board package. Please don't confuse this with the M5Stack library; we definitely need the library.
 
 ## Credits
 
 - The included MFRC522 I2C Library is from the [RFID_RC522 example](https://github.com/m5stack/M5Stack/tree/master/examples/Unit/RFID_RC522) in the public domain, originally developed by [arozcan](https://github.com/arozcan/MFRC522-I2C-Library) based on the findings of the pioneers and modified by M5Stack.
-- To avoid the noise problem regarding the A button on the M5Stack, [the discussion between @mikasa231
-san and @lovyan03 san on Twitter](https://twitter.com/mikasa231/status/1403576681701335044) helped us.
-- The technique for detecting that an RFIF tag has been removed was implemented by referring to [the example proposed by uluzox](https://github.com/miguelbalboa/rfid/issues/188#issuecomment-495395401) and modified for cooperative multitasking.
+- The technique for detecting that an RFIF tag has been removed was implemented by referring to [the example proposed by uluzox](https://github.com/miguelbalboa/rfid/issues/188#issuecomment-495395401) and modified for cooperative multitasking
