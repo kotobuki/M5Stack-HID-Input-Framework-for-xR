@@ -2,7 +2,7 @@
 #include <Adafruit_SGP30.h>
 #include <BleKeyboard.h>
 #include <DFRobot_PAJ7620U2.h>
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <Preferences.h>
 #include <Servo.h>
 #include <VL53L0X.h>
@@ -156,11 +156,17 @@ void handleNotFound() {
 }
 
 void setup() {
-  // A workaround to avoid noise regarding Button A
-  adc_power_acquire();
-
   M5.begin();
   M5.Power.begin();
+  Wire.begin();
+
+  // A workaround. Once the M5Unified library is updated, we should remove it
+  // for simplicity.
+  // https://github.com/m5stack/M5Unified/issues/34#issuecomment-1198892349
+#if defined(ARDUINO_M5STACK_FIRE)
+  pinMode(15, OUTPUT_OPEN_DRAIN);
+#endif
+
   M5.Lcd.fillScreen(BLACK);
   M5.Lcd.setTextColor(GREEN, BLACK);
   M5.Lcd.setTextSize(2);
@@ -170,24 +176,48 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
 
+  M5.Lcd.drawLine(64, 220, 64, 239, GREEN);
+  M5.Lcd.drawLine(60, 235, 64, 239, GREEN);
+  M5.Lcd.drawLine(68, 235, 64, 239, GREEN);
+  M5.Lcd.setCursor(64, 200);
+  M5.Lcd.print("Press to setup Wi-Fi");
+
+  int count = 3;
+  while (0 < count) {
+    M5.update();
+    if (M5.BtnA.isPressed()) {
+      break;
+    }
+
+    M5.Lcd.setCursor(64, 180);
+    M5.Lcd.print(count);
+    count--;
+    delay(1000);
+  }
+
+  M5.Lcd.clear();
+
   if (M5.BtnA.isPressed()) {
     WiFi.beginSmartConfig();
 
-    M5.Lcd.setCursor(10, 10);
+    M5.Lcd.setCursor(0, 0);
     M5.Lcd.print("Waiting for SmartConfig");
 
     while (!WiFi.smartConfigDone()) {
       delay(500);
       M5.Lcd.print(".");
 
-      if (30000 < millis()) {
+      if (60000 < millis()) {
         ESP.restart();
       }
     }
-    M5.Lcd.clear();
   } else {
     WiFi.begin();
   }
+
+  M5.Lcd.clear();
+  M5.Lcd.setCursor(0, 0);
+  M5.Lcd.print("Starting up...");
 
   preferences.begin("alt. controller", false);
   unitOnPortB = preferences.getInt("unitOnPortB", UNIT_NONE);
@@ -204,9 +234,8 @@ void setup() {
   updateFlagsRegardingPortB();
 
   // Disable the speaker noise
-  dacWrite(25, 0);
-
-  Wire.begin();
+  M5.Speaker.begin();
+  M5.Speaker.setVolume(0);
 
   // Check if a JOYSTICK Unit is available at the I2C address
   Wire.beginTransmission(I2C_ADDR_JOYSTICK);
@@ -243,11 +272,6 @@ void setup() {
 
   bleKeyboard.begin();
 
-  M5.Lcd.setCursor(0, 0);
-  M5.Lcd.print("Bluetooth: Not connected");
-
-  drawButtons(currentScreenMode);
-
   unsigned long startTime = millis();
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -264,6 +288,9 @@ void setup() {
 
     server.begin();
   }
+
+  M5.Lcd.clear();
+  drawButtons(currentScreenMode);
 }
 
 void loop() {
@@ -280,30 +307,33 @@ void loop() {
     server.handleClient();
   }
 
-  if (isJoystickConnected) {
-    handleJoystick(requestToSend);
+  if (isGestureSensorConnected) {
+    // It uses both the joystick channel and the buttons channel
+    handleGestureSensor(requestToSend);
+  } else {
+    // It uses the joystick channel
+    if (isJoystickConnected) {
+      handleJoystick(requestToSend);
+    }
+
+    // It uses the buttons channel
+    if (isDualButtonConnected) {
+      handleDualButton(requestToSend);
+    }
+    if (isTouchSensorConnected) {
+      handleTouchSensor(requestToSend);
+    } else if (isRfidReaderConnected && !isWaitingForNewRfidTag) {
+      handleRFID(requestToSend);
+    }
   }
 
-  if (isDualButtonConnected) {
-    handleDualButton(requestToSend);
-  }
-
-  if (isTouchSensorConnected) {
-    handleTouchSensor(requestToSend);
-  } else if (isRfidReaderConnected && !isWaitingForNewRfidTag) {
-    handleRFID(requestToSend);
-  }
-
+  // It uses the analog channel
   if (isGasSensorConnected) {
     handleGasSensor(requestToSend);
   } else if (isRangingSensorConnected) {
     handleRangingSensor(requestToSend);
   } else if (isLightSensorConnected) {
     handleAnalogInput(requestToSend);
-  }
-
-  if (isGestureSensorConnected) {
-    handleGestureSensor(requestToSend);
   }
 
   if (currentScreenMode == SCREEN_MAIN) {
@@ -592,8 +622,7 @@ void updateFlagsRegardingPortB() {
 void drawMainScreen() {
   if (WiFi.status() == WL_CONNECTED) {
     M5.Lcd.setCursor(0, 0);
-    M5.Lcd.printf("B: %s | W: %s",
-                  isConnected ? "<->" : "-X-",
+    M5.Lcd.printf("B: %s | W: %s", isConnected ? "<->" : "-X-",
                   WiFi.localIP().toString().c_str());
   } else {
     M5.Lcd.setCursor(0, 0);
@@ -1000,14 +1029,14 @@ void handleGestureSensor(bool updateRequested) {
         }
       }
       lastUpdate = now;
-      sprintf(buttonsStatus2, "Gesture: %14s",
+      sprintf(joystickStatus, "GESTURE: %-14s",
               gestureSensor.gestureDescription(gesture));
       break;
 
     // Not supported gestures and None
     default:
       if ((now - lastUpdate) > 1000) {
-        sprintf(buttonsStatus2, "Gesture:               ");
+        sprintf(joystickStatus, "GESTURE:               ");
       }
       break;
   }
@@ -1067,4 +1096,3 @@ void drawButton(int centerX, const String &title) {
   M5.Lcd.drawRect(rectLeft, rectTop, rectWidth, rectHeight, TFT_GREEN);
   M5.Lcd.drawCentreString(title, centerX, coordinateY, 1);
 }
-

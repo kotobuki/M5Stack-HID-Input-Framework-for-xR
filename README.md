@@ -1,4 +1,4 @@
-# :construction: M5Stack-based I/O Framework for xR [Tentatively Named] :construction:
+# :construction: M5-based I/O Framework for xR [Tentatively Named] :construction:
 
 ## Status
 
@@ -35,22 +35,25 @@
 
 The connected Unit(s) input is transmitted on three different channels: analog, joystick, and buttons. The analog and joystick channels can handle up to one sensor Unit input for each at once, and the buttons channel can handle up to six button inputs simultaneously.
 
-:pushpin: **We should update the following table to include the Gesture sensor, Servo and Vibrator.**
+:pushpin: **We should check all possible combinations in the following table.**
 
-| Unit           | Port | Channel  | Pattern A | Pattern B | Pattern C | Pattern D | Pattern E | Pattern F |
-|:---------------|:-----|:---------|:----------|:----------|:----------|:----------|:----------|:----------|
-| Dual Button    | B    | Buttons  | :bulb:    | :bulb:    | :bulb:    | :bulb:    |           |           |
-| Light Sensor   | B    | Analog   |           |           |           |           | :bulb:    | :bulb:    |
-| Joystick       | A    | Joystick | :bulb:    | :bulb:    |           |           | :bulb:    | :bulb:    |
-| Gas Sensor     | A    | Analog   | :bulb:    | :bulb:    |           |           |           |           |
-| Ranging Sensor | A    | Analog   |           |           | :bulb:    | :bulb:    |           |           |
-| Touch Sensor   | A    | Buttons  | :bulb:    |           | :bulb:    |           | :bulb:    |           |
-| RFID Reader    | A    | Buttons  |           | :bulb:    |           | :bulb:    |           | :bulb:    |
-| Gesture Sensor | A    | Joy&Btn  |           |           |           |           |           |           |
-| Servo          | B    | Webhook  |           |           |           |           |           |           |
-| Vibrator       | B    | Webhook  |           |           |           |           |           |           |
-
-- Gesture sensor is exclusive with other units using analogue or button channels.
+| Pattern \ Unit | Gesture | Joystick | Dual Button | Touch  | RFID   | Gas    | Ranging | Light  | Servo/Vibrator |
+| :------------- | :------ | :------- | :---------- | :----- | :----- | :----- | :------ | :----- | :------------- |
+| A              | :bulb:  |          |             |        |        | :bulb: |         |        | :bulb:         |
+| B              | :bulb:  |          |             |        |        |        | :bulb:  |        | :bulb:         |
+| C              | :bulb:  |          |             |        |        |        |         | :bulb: |                |
+| D              |         | :bulb:   | :bulb:      | :bulb: |        | :bulb: |         |        |                |
+| E              |         | :bulb:   | :bulb:      | :bulb: |        |        | :bulb:  |        |                |
+| F              |         | :bulb:   | :bulb:      | :bulb: |        |        |         |        |                |
+| G              |         | :bulb:   | :bulb:      |        | :bulb: | :bulb: |         |        |                |
+| H              |         | :bulb:   | :bulb:      |        | :bulb: |        | :bulb:  |        |                |
+| I              |         | :bulb:   | :bulb:      |        | :bulb: |        |         |        |                |
+| J              |         | :bulb:   |             | :bulb: |        | :bulb: |         |        | :bulb:         |
+| K              |         | :bulb:   |             | :bulb: |        |        | :bulb:  |        | :bulb:         |
+| L              |         | :bulb:   |             | :bulb: |        |        |         | :bulb: |                |
+| M              |         | :bulb:   |             |        | :bulb: | :bulb: |         |        | :bulb:         |
+| N              |         | :bulb:   |             |        | :bulb: |        | :bulb:  |        | :bulb:         |
+| O              |         | :bulb:   |             |        | :bulb: |        |         | :bulb: |                |
 
 #### Notes
 
@@ -64,7 +67,7 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 
 1. Download M5Burner v3.0 for your platform from [the official website](https://docs.m5stack.com/en/download)
 2. Extract and launch the M5Burner (move to your Applications folder before launching on macOS)
-3. Choose "M5Stack-based I/O Framework for xR" from the projects
+3. Choose "M5-based I/O Framework for xR" from the projects
 4. Click on the `Download` button of the project
 5. Once finished downloading, the `Download` button becomes the `Burn` button
 6. Click on the `Burn` button
@@ -75,9 +78,9 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 1. Install EspTouch for [iOS](https://apps.apple.com/app/espressif-esptouch/id1071176700) or [Android](https://github.com/EspressifApp/EsptouchForAndroid/releases/tag/v2.0.0/esptouch-v2.0.0.apk) to your smartphone
 2. Connect your smartphone to the Wi-Fi router
 3. Open your EspTouch app
-4. Input the router’s password
-5. Press the A button on your M5Stack and press the power button to reboot while keeping the A button
-6. Tap the Confirm button on the EspTouch app
+4. Input the router’s password on the EspTouch app
+5. Power on (or reboot) your M5Stack and press the A button within three seconds
+6. Tap the `Confirm` button on the EspTouch app and wait for a while
 7. You will see an IP address on the screen of your M5Stack
 
 ### :construction: Test :construction:
