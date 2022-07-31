@@ -24,12 +24,18 @@
 
 ### Supported platforms
 
+:warning: **Not thoroughly tested yet.**
+
 - iOS/iPadOS - [STYLY](https://itunes.apple.com/jp/app/id1477168256?mt=8) app
 - Android - [STYLY](https://play.google.com/store/apps/details?id=com.psychicvrlab.stylymr) app
 - Oculus Quest 2 - [STYLY](https://www.oculus.com/experiences/quest/3982198145147898/) app (from App Lab)
 - Windows - [STYLY VR](https://store.steampowered.com/app/693990/STYLYVR_PLATFORM_FOR_ULTRA_EXPERIENCE/) app
 - Windows - Chrome
 - macOS - Chrome
+
+#### Known issues
+
+- [ ] Input doesn't work with the STYLY app v9.0.4 on iOS.
 
 ### Supported combinations (maximum)
 
@@ -75,7 +81,7 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 
 ### Setup Wi-Fi
 
-1. Install EspTouch for [iOS](https://apps.apple.com/app/espressif-esptouch/id1071176700) or [Android](https://github.com/EspressifApp/EsptouchForAndroid/releases/tag/v2.0.0/esptouch-v2.0.0.apk) to your smartphone
+1. Install EspTouch for [iOS](https://apps.apple.com/app/espressif-esptouch/id1071176700) or [Android](https://github.com/EspressifApp/EsptouchForAndroid/releases/tag/v2.0.0/esptouch-v2.0.0.apk) (choose the `esptouch-v2.0.0.apk`) to your smartphone
 2. Connect your smartphone to the Wi-Fi router
 3. Open your EspTouch app
 4. Input the router’s password on the EspTouch app
@@ -91,12 +97,12 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 2. Power on your M5Stack controller
 3. If you want to use Dual Button, Light Sensor, or RFID reader, please refer to the "How to setup" section and setup
 4. Connect the controller as a Bluetooth device to your device (please follow standard instruction for the device)
-5. Open the [Test_Gamepad](https://gallery.styly.cc/scene/9b69aa0b-9ff2-4993-971b-2f8a78c7a347) scene in a browser and bring the browser frontmost
+5. Open the [I/O Framework Test](https://gallery.styly.cc/scene/3a42b7b6-a6d1-4206-84cf-3dbf9b315bda) scene in a browser and bring the browser frontmost
 6. Press the `Send` (C) button to start sending
 7. Control the joystick, sensor, etc.
 8. Once confirmed, press the `Stop` (C) button again to stop sending
 
-[![STYLY_marker](images/STYLY_marker.png)](https://gallery.styly.cc/scene/9b69aa0b-9ff2-4993-971b-2f8a78c7a347)
+[![STYLY_marker](images/STYLY_marker.png)](https://gallery.styly.cc/scene/3a42b7b6-a6d1-4206-84cf-3dbf9b315bda)
 
 ### Setup
 

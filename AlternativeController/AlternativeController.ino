@@ -979,6 +979,7 @@ void handleTouchSensor(bool updateRequested) {
 
 void handleGestureSensor(bool updateRequested) {
   static unsigned long lastUpdate = 0;
+  static bool wasLastGestureNone = false;
 
   DFRobot_PAJ7620U2::eGesture_t gesture = gestureSensor.getGesture();
 
@@ -1009,25 +1010,26 @@ void handleGestureSensor(bool updateRequested) {
             bleKeyboard.write(KEY_JOYSTICK_CENTER_DOWN);
             break;
           case gestureSensor.eGestureForward:
-            bleKeyboard.write(KEYS_FOR_BUTTON_CH[0]);
+            bleKeyboard.press(KEYS_FOR_BUTTON_CH[0]);
             break;
           case gestureSensor.eGestureBackward:
-            bleKeyboard.write(KEYS_FOR_BUTTON_CH[1]);
+            bleKeyboard.press(KEYS_FOR_BUTTON_CH[1]);
             break;
           case gestureSensor.eGestureClockwise:
-            bleKeyboard.write(KEYS_FOR_BUTTON_CH[2]);
+            bleKeyboard.press(KEYS_FOR_BUTTON_CH[2]);
             break;
           case gestureSensor.eGestureAntiClockwise:
-            bleKeyboard.write(KEYS_FOR_BUTTON_CH[3]);
+            bleKeyboard.press(KEYS_FOR_BUTTON_CH[3]);
             break;
           case gestureSensor.eGestureWave:
-            bleKeyboard.write(KEYS_FOR_BUTTON_CH[4]);
+            bleKeyboard.press(KEYS_FOR_BUTTON_CH[4]);
             break;
 
           default:
             break;
         }
       }
+      wasLastGestureNone = false;
       lastUpdate = now;
       sprintf(joystickStatus, "GESTURE: %-14s",
               gestureSensor.gestureDescription(gesture));
@@ -1035,8 +1037,15 @@ void handleGestureSensor(bool updateRequested) {
 
     // Not supported gestures and None
     default:
-      if ((now - lastUpdate) > 1000) {
+      if (!wasLastGestureNone && ((now - lastUpdate) > 500)) {
         sprintf(joystickStatus, "GESTURE:               ");
+        bleKeyboard.write(KEY_JOYSTICK_CENTER);
+        bleKeyboard.release(KEYS_FOR_BUTTON_CH[0]);
+        bleKeyboard.release(KEYS_FOR_BUTTON_CH[1]);
+        bleKeyboard.release(KEYS_FOR_BUTTON_CH[2]);
+        bleKeyboard.release(KEYS_FOR_BUTTON_CH[3]);
+        bleKeyboard.release(KEYS_FOR_BUTTON_CH[4]);
+        wasLastGestureNone = true;
       }
       break;
   }
