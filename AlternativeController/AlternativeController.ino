@@ -14,6 +14,8 @@
 
 #include "MFRC522_I2C.h"
 
+const String VERSION_STRING = "v2.0.0-alpha.4";
+
 // Unit related constants
 const int I2C_ADDR_JOYSTICK = 0x52;
 const int I2C_ADDR_VL53L0X = 0x29;
@@ -217,7 +219,9 @@ void setup() {
 
   M5.Lcd.clear();
   M5.Lcd.setCursor(0, 0);
-  M5.Lcd.print("Starting up...");
+  M5.Lcd.println("Starting up...");
+  M5.Lcd.setCursor(0, LAYOUT_LINE_HEIGHT);
+  M5.Lcd.println(VERSION_STRING);
 
   preferences.begin("alt. controller", false);
   unitOnPortB = preferences.getInt("unitOnPortB", UNIT_NONE);
@@ -1039,12 +1043,14 @@ void handleGestureSensor(bool updateRequested) {
     default:
       if (!wasLastGestureNone && ((now - lastUpdate) > 500)) {
         sprintf(joystickStatus, "GESTURE:               ");
-        bleKeyboard.write(KEY_JOYSTICK_CENTER);
-        bleKeyboard.release(KEYS_FOR_BUTTON_CH[0]);
-        bleKeyboard.release(KEYS_FOR_BUTTON_CH[1]);
-        bleKeyboard.release(KEYS_FOR_BUTTON_CH[2]);
-        bleKeyboard.release(KEYS_FOR_BUTTON_CH[3]);
-        bleKeyboard.release(KEYS_FOR_BUTTON_CH[4]);
+        if (updateRequested) {
+          bleKeyboard.write(KEY_JOYSTICK_CENTER);
+          bleKeyboard.release(KEYS_FOR_BUTTON_CH[0]);
+          bleKeyboard.release(KEYS_FOR_BUTTON_CH[1]);
+          bleKeyboard.release(KEYS_FOR_BUTTON_CH[2]);
+          bleKeyboard.release(KEYS_FOR_BUTTON_CH[3]);
+          bleKeyboard.release(KEYS_FOR_BUTTON_CH[4]);
+        }
         wasLastGestureNone = true;
       }
       break;
