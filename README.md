@@ -208,7 +208,17 @@ sequenceDiagram
 
 ### :construction: Webhooks :construction:
 
-#### Common API
+#### Get input status
+
+`GET` `http://{ip_address}/input`
+
+`{analog value},{joystick value},{button 1 value},{button 2 value},{button 3 value},{button 4 value},{button 5 value},{button 6 value},`
+
+Example:
+
+`9,Left,0,1,0,0,0,0`
+
+#### Set output status
 
 `GET` `http://{ip_address}/output?val={value}`
 
@@ -216,11 +226,11 @@ Example:
 
 `GET` `http://192.168.0.10/output?val=123`
 
-#### Servo
+##### Servo
 
 `val`: servo angle in degree, between 0 and 180
 
-#### Vibrator
+##### Vibrator
 
 `val`: on duration in ms, between 0 and 100
 

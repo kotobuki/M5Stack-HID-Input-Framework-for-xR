@@ -14,7 +14,7 @@
 
 #include "MFRC522_I2C.h"
 
-const String VERSION_STRING = "v2.0.0-alpha.4";
+const String VERSION_STRING = "v2.0.0-alpha.5";
 
 // Unit related constants
 const int I2C_ADDR_JOYSTICK = 0x52;
@@ -98,6 +98,7 @@ const byte KEY_JOYSTICK_LEFT_DOWN = 'n';
 const byte KEY_JOYSTICK_CENTER_DOWN = 'm';
 const byte KEY_JOYSTICK_RIGHT_DOWN = ',';
 const int OFFSET_BUTTON_3 = 2;
+const int NUM_BUTTONS = 6;
 
 // ESP32 BLE Keyboard related variables
 // Note: the device name should be within 15 characters;
@@ -110,7 +111,22 @@ bool isSending = false;
 // Web server related variables
 WebServer server(80);
 
-void handleOutput() {
+int analogValueForReporting = 0;
+String joystickValueForReporting = "Center";
+int buttonValuesForReporting[NUM_BUTTONS];
+
+void handleInputRequest() {
+  String message = "";
+  message += String(analogValueForReporting) + ",";
+  message += joystickValueForReporting + ",";
+  message += String(buttonValuesForReporting[0]);
+  for (int i = 1; i < NUM_BUTTONS; i++) {
+    message += "," + String(buttonValuesForReporting[i]);
+  }
+  server.send(200, "text/csv", message);
+}
+
+void handleOutputRequest() {
   if (server.args() == 1 && server.argName(0).equals("val")) {
     int val = server.arg(0).toInt();
 
@@ -161,6 +177,10 @@ void setup() {
   M5.begin();
   M5.Power.begin();
   Wire.begin();
+
+  for (int i = 0; i < NUM_BUTTONS; i++) {
+    buttonValuesForReporting[i] = 0;
+  }
 
   // A workaround. Once the M5Unified library is updated, we should remove it
   // for simplicity.
@@ -287,7 +307,8 @@ void setup() {
 
   if (WiFi.status() == WL_CONNECTED) {
     server.on("/", []() { server.send(200, "text/plain", "Hello from RE:"); });
-    server.on("/output", handleOutput);
+    server.on("/input", handleInputRequest);
+    server.on("/output", handleOutputRequest);
     server.onNotFound(handleNotFound);
 
     server.begin();
@@ -753,6 +774,8 @@ void handleDualButton(bool updateRequested) {
 
   wasRedButtonPressed = isRedButtonPressed;
   wasBlueButtonPressed = isBlueButtonPressed;
+  buttonValuesForReporting[KEY_ID_RED_BUTTON] = isRedButtonPressed;
+  buttonValuesForReporting[KEY_ID_BLUE_BUTTON] = isBlueButtonPressed;
 }
 
 void handleAnalogInput(bool updateRequested) {
@@ -770,6 +793,7 @@ void handleAnalogInput(bool updateRequested) {
     }
     lastAnalogValue = currentAnalogValue;
   }
+  analogValueForReporting = currentAnalogValue;
 }
 
 void handleJoystick(bool updateRequested) {
@@ -831,6 +855,26 @@ void handleJoystick(bool updateRequested) {
     lastJoystickX = curJoystickX;
     lastJoystickY = curJoystickY;
   }
+
+  if (curJoystickX == -1 && curJoystickY == 1) {
+    joystickValueForReporting = "Left-Up";
+  } else if (curJoystickX == 0 && curJoystickY == 1) {
+    joystickValueForReporting = "Center-Up";
+  } else if (curJoystickX == 1 && curJoystickY == 1) {
+    joystickValueForReporting = "Right-Up";
+  } else if (curJoystickX == -1 && curJoystickY == 0) {
+    joystickValueForReporting = "Left";
+  } else if (curJoystickX == 0 && curJoystickY == 0) {
+    joystickValueForReporting = "Center";
+  } else if (curJoystickX == 1 && curJoystickY == 0) {
+    joystickValueForReporting = "Right";
+  } else if (curJoystickX == -1 && curJoystickY == -1) {
+    joystickValueForReporting = "Left-Down";
+  } else if (curJoystickX == 0 && curJoystickY == -1) {
+    joystickValueForReporting = "Center-Down";
+  } else if (curJoystickX == 1 && curJoystickY == -1) {
+    joystickValueForReporting = "Right-Down";
+  }
 }
 
 void handleRangingSensor(bool updateRequested) {
@@ -850,6 +894,7 @@ void handleRangingSensor(bool updateRequested) {
     }
     lastValue = currentValue;
   }
+  analogValueForReporting = currentValue;
 }
 
 void handleGasSensor(bool updateRequested) {
@@ -871,6 +916,7 @@ void handleGasSensor(bool updateRequested) {
     }
     lastValue = currentValue;
   }
+  analogValueForReporting = currentValue;
 }
 
 // Reference:
@@ -902,6 +948,7 @@ void handleRFID(bool updateRequested) {
         }
         sprintf(buttonsStatus2, "RFID Tag:%d   ", i);
         lastRfidTag = i;
+        buttonValuesForReporting[i + OFFSET_BUTTON_3] = 1;
         break;
       }
     }
@@ -926,6 +973,7 @@ void handleRFID(bool updateRequested) {
         sprintf(buttonsStatus2, "RFID Tag:None");
       }
       lastRfidTag = -1;
+      buttonValuesForReporting[lastRfidTag + OFFSET_BUTTON_3] = 0;
 
       delay(100);
       rfidReader.PICC_HaltA();
@@ -966,16 +1014,18 @@ void handleTouchSensor(bool updateRequested) {
           bitRead(currentlyTouched, 2), bitRead(currentlyTouched, 3));
 
   for (int i = 0; i < 4; i++) {
-    if (updateRequested) {
-      bool wasPadTouched = bitRead(lastTouched, i) == 1;
-      bool isPadTouched = bitRead(currentlyTouched, i) == 1;
+    bool wasPadTouched = bitRead(lastTouched, i) == 1;
+    bool isPadTouched = bitRead(currentlyTouched, i) == 1;
 
+    if (updateRequested) {
       if (!wasPadTouched && isPadTouched) {
         bleKeyboard.press(KEYS_FOR_BUTTON_CH[i + OFFSET_BUTTON_3]);
       } else if (wasPadTouched && !isPadTouched) {
         bleKeyboard.release(KEYS_FOR_BUTTON_CH[i + OFFSET_BUTTON_3]);
       }
     }
+
+    buttonValuesForReporting[i + OFFSET_BUTTON_3] = isPadTouched;
   }
 
   lastTouched = currentlyTouched;
@@ -1033,10 +1083,12 @@ void handleGestureSensor(bool updateRequested) {
             break;
         }
       }
+
       wasLastGestureNone = false;
       lastUpdate = now;
       sprintf(joystickStatus, "GESTURE: %-14s",
               gestureSensor.gestureDescription(gesture));
+      joystickValueForReporting = gestureSensor.gestureDescription(gesture);
       break;
 
     // Not supported gestures and None
@@ -1052,6 +1104,7 @@ void handleGestureSensor(bool updateRequested) {
           bleKeyboard.release(KEYS_FOR_BUTTON_CH[4]);
         }
         wasLastGestureNone = true;
+        joystickValueForReporting = "None";
       }
       break;
   }
