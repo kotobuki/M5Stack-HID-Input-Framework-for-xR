@@ -131,14 +131,13 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 - "alt. controller" is shown as connected but no input to the STYLY scene. → Please try to unpair the controller in the Bluetooth preference and pair it again.
 - Bluetooth connection status on my controller keeps switching between `Connected` and `Disconnected` when not connected. → The controller might have been paired with an old host (i.e., a PC or smartphone). If you no longer use the controller with the host, please remove the device from the host.
 
-## Protocol
+## Bluetooth protocol
 
 ```mermaid
 sequenceDiagram
     participant S as STYLY app
     participant M as M5Stack
     M-->>S: keyboard events over BLE
-    S-->>M: GET HTTP Requests over Wi-Fi
 ```
 
 ![keyboard-layout](images/keyboard-layout.png)
@@ -206,9 +205,17 @@ sequenceDiagram
 | 4   | Jump  | g   | Gesture - AntiClockwise |
 | 5   |       | r   | Gesture - Wave          |
 
-### :construction: Webhooks :construction:
+## :construction: Wi-Fi protocol :construction:
 
-#### Get input status
+```mermaid
+sequenceDiagram
+    participant S as STYLY app
+    participant M as M5Stack
+    S-->>M: GET HTTP Requests over Wi-Fi
+    M-->>S: HTTP Responses over Wi-Fi
+```
+
+### Get input status
 
 `GET` `http://{ip_address}/input`
 
@@ -218,21 +225,16 @@ Example:
 
 `9,Left,0,1,0,0,0,0`
 
-#### Set output status
+### Set output status
 
 `GET` `http://{ip_address}/output?val={value}`
+
+- `SERVO`: `{value}` is servo angle in degree, between 0 and 180
+- `VIBRATOR`: `{value}` is on duration in ms, between 0 and 100
 
 Example:
 
 `GET` `http://192.168.0.10/output?val=123`
-
-##### Servo
-
-`val`: servo angle in degree, between 0 and 180
-
-##### Vibrator
-
-`val`: on duration in ms, between 0 and 100
 
 ## Requirements (for developers)
 
