@@ -97,12 +97,12 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 2. Power on your M5Stack controller
 3. If you want to use Dual Button, Light Sensor, or RFID reader, please refer to the "How to setup" section and setup
 4. Connect the controller as a Bluetooth device to your device (please follow standard instruction for the device)
-5. Open the [I/O Framework Test](https://gallery.styly.cc/scene/3a42b7b6-a6d1-4206-84cf-3dbf9b315bda) scene in a browser and bring the browser frontmost
+5. Open the [IOFrameworkWidget (BLE and Wi-Fi)](https://gallery.styly.cc/scene/dd6b5c48-bb91-46e6-ab01-0f964d96de24) scene in a browser and bring the browser frontmost
 6. Press the `Send` (C) button to start sending
 7. Control the joystick, sensor, etc.
 8. Once confirmed, press the `Stop` (C) button again to stop sending
 
-[![STYLY_marker](images/STYLY_marker.png)](https://gallery.styly.cc/scene/3a42b7b6-a6d1-4206-84cf-3dbf9b315bda)
+[![STYLY_marker](images/STYLY_marker.png)](https://gallery.styly.cc/scene/dd6b5c48-bb91-46e6-ab01-0f964d96de24)
 
 ### Setup
 
