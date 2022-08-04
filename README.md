@@ -236,6 +236,50 @@ Example:
 
 `GET` `http://192.168.0.10/output?val=123`
 
+## :construction: IOFrameworkManager :construction:
+
+### Usage
+
+1. Import the `IOFrameworkWidget.unitypackage`
+2. Add an FSM to a GameObject
+3. Add global transition(s) to the FSM to receive the input-related event(s)
+4. Add a `Send Event` action (with a `Set Event String Data` action if necessary) to a State to send the output or Wi-Fi-related event(s)
+
+### Input
+
+- `ANALOG VALUE CHANGED` Int: analog value
+- `JOYSTICK VALUE CHANGED` String: joystick value
+- `BUTTON 1 DOWN`
+- `BUTTON 1 UP`
+- `BUTTON 2 DOWN`
+- `BUTTON 2 UP`
+- `BUTTON 3 DOWN`
+- `BUTTON 3 UP`
+- `BUTTON 4 DOWN`
+- `BUTTON 4 UP`
+- `BUTTON 5 DOWN`
+- `BUTTON 5 UP`
+- `BUTTON 6 DOWN`
+- `BUTTON 6 UP`
+
+### Output
+
+To the `IOFrameworkManager: Event Handlers FSM` FSM.
+
+- `SET OUTPUT VALUE REQUEST` String: output value
+
+### Wi-Fi
+
+To the `IOFrameworkManager: Event Handlers FSM` FSM.
+
+- `SET IP ADDRESS` String: IP address
+
+To the `IOFrameworkManager: HTTP Request Loop FSM` FSM.
+
+- `START LISTENING`
+- `STOP LISTENING`
+- `LISTEN ONCE`
+
 ## Requirements (for developers)
 
 ### Preparing the development environment
