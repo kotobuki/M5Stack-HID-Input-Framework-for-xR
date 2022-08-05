@@ -1,8 +1,8 @@
-# :construction: M5-based I/O Framework for xR [Tentatively Named] :construction:
+# I/O Framework for xR
 
 ## Status
 
-:warning: Heavily work in progress; therefore, only for experimental purposes :warning:
+:construction: Heavily work in progress; therefore, only for experimental purposes :construction:
 
 ### Supported Units
 
@@ -35,7 +35,7 @@
 
 #### Known issues
 
-- [ ] Input doesn't work with the STYLY app v9.0.4 on iOS.
+- [ ] Bluetooth keyboard input doesn't work with the STYLY app v9.0.4 on iOS.
 
 ### Supported combinations (maximum)
 
@@ -73,7 +73,7 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 
 1. Download M5Burner v3.0 for your platform from [the official website](https://docs.m5stack.com/en/download)
 2. Extract and launch the M5Burner (move to your Applications folder before launching on macOS)
-3. Choose "M5-based I/O Framework for xR" from the projects
+3. Choose "I/O Framework for xR" from the projects
 4. Click on the `Download` button of the project
 5. Once finished downloading, the `Download` button becomes the `Burn` button
 6. Click on the `Burn` button
@@ -87,11 +87,9 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 4. Input the router’s password on the EspTouch app
 5. Power on (or reboot) your M5Stack and press the A button within three seconds
 6. Tap the `Confirm` button on the EspTouch app and wait for a while
-7. You will see an IP address on the screen of your M5Stack
+7. You will see an IP address on the screen of the M5Stack
 
-### :construction: Test :construction:
-
-:pushpin: **We should update the example scene to support new sensor and actuator Units.**
+### Test
 
 1. Choose a pattern from the table above and connect Unit(s) to your M5Stack controller (e.g., M5Stack FIRE)
 2. Power on your M5Stack controller
@@ -128,10 +126,10 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 
 ### Troubleshooting
 
-- "alt. controller" is shown as connected but no input to the STYLY scene. → Please try to unpair the controller in the Bluetooth preference and pair it again.
+- "IO Framework M5" is shown as connected but no input to the STYLY scene. → Please try to unpair the controller in the Bluetooth preference and pair it again.
 - Bluetooth connection status on my controller keeps switching between `Connected` and `Disconnected` when not connected. → The controller might have been paired with an old host (i.e., a PC or smartphone). If you no longer use the controller with the host, please remove the device from the host.
 
-## Bluetooth protocol
+## Bluetooth keyboard protocol
 
 ```mermaid
 sequenceDiagram
@@ -205,7 +203,7 @@ sequenceDiagram
 | 4   | Jump  | g   | Gesture - AntiClockwise |
 | 5   |       | r   | Gesture - Wave          |
 
-## :construction: Wi-Fi protocol :construction:
+## Wi-Fi protocol
 
 ```mermaid
 sequenceDiagram
@@ -215,7 +213,7 @@ sequenceDiagram
     M-->>S: HTTP Responses over Wi-Fi
 ```
 
-### Get input status
+### Get input values
 
 `GET` `http://{ip_address}/input`
 
@@ -225,7 +223,7 @@ Example:
 
 `9,Left,0,1,0,0,0,0`
 
-### Set output status
+### Set output value
 
 `GET` `http://{ip_address}/output?val={value}`
 
@@ -236,16 +234,18 @@ Example:
 
 `GET` `http://192.168.0.10/output?val=123`
 
-## :construction: IOFrameworkManager :construction:
+## IOFrameworkManager for Unity
 
 ### Usage
 
-1. Import the `IOFrameworkWidget.unitypackage`
+1. Import the `IOFrameworkWidget.unitypackage` file to your Unity project
 2. Add an FSM to a GameObject
 3. Add global transition(s) to the FSM to receive the input-related event(s)
 4. Add a `Send Event` action (with a `Set Event String Data` action if necessary) to a State to send the output or Wi-Fi-related event(s)
 
 ### Input
+
+IOFrameworkManager broadcasts events to all FSMs.
 
 - `ANALOG VALUE CHANGED` Int: analog value
 - `JOYSTICK VALUE CHANGED` String: joystick value
@@ -264,17 +264,17 @@ Example:
 
 ### Output
 
-To the `IOFrameworkManager: Event Handlers FSM` FSM.
+Send events to `IOFrameworkManager: Event Handlers FSM`.
 
 - `SET OUTPUT VALUE REQUEST` String: output value
 
 ### Wi-Fi
 
-To the `IOFrameworkManager: Event Handlers FSM` FSM.
+Send events to `IOFrameworkManager: Event Handlers FSM`.
 
 - `SET IP ADDRESS` String: IP address
 
-To the `IOFrameworkManager: HTTP Request Loop FSM` FSM.
+Send events to `IOFrameworkManager: HTTP Request Loop FSM`.
 
 - `START LISTENING`
 - `STOP LISTENING`
@@ -295,7 +295,8 @@ To the `IOFrameworkManager: HTTP Request Loop FSM` FSM.
 - [VL53L0X library for Arduino](https://github.com/pololu/vl53l0x-arduino) v1.3.1 by Pololu[^VL53L0X]
 - [Adafruit SGP30 Gas / Air Quality I2C sensor](https://github.com/adafruit/Adafruit_SGP30) v2.0.0 by Adafruit
 - [Adafruit MPR121 Library](https://github.com/adafruit/Adafruit_MPR121) v1.1.1 by Adafruit
-- [ServoESP32](https://github.com/RoboticsBrno/ServoESP32/) v1.0.3 by RoboticsBrno
+- [ESP32Servo](https://www.arduinolibraries.info/libraries/esp32-servo) v0.11.0 by Kevin Harrington and John K. Bennett
+- [ServoEasing](https://github.com/ArminJo/ServoEasing) v3.0.0 by Armin Joachimsmeyer
 - [DFRobot_PAJ7620](https://github.com/DFRobot/DFRobot_PAJ7620U2) v1.0.1 by DFRobot
 
 [^VL53L0X]: Make sure to install the one by Pololu, not by Adafruit.

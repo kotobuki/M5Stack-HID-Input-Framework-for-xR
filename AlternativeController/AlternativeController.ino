@@ -4,7 +4,6 @@
 #include <DFRobot_PAJ7620U2.h>
 #include <M5Unified.h>
 #include <Preferences.h>
-#include <Servo.h>
 #include <VL53L0X.h>
 #include <WebServer.h>
 #include <WiFi.h>
@@ -13,8 +12,14 @@
 #include <stdio.h>
 
 #include "MFRC522_I2C.h"
+#include "ServoEasing.hpp"
 
-const String VERSION_STRING = "v2.0.0-alpha.5";
+const String VERSION_STRING = "v2.0.0-beta.1";
+
+// Note: the device name should be within 15 characters;
+// otherwise, macOS and iOS devices can't discover
+// https://github.com/T-vK/ESP32-BLE-Keyboard/issues/51#issuecomment-733886764
+const String DEVICE_NAME = "IO Framework M5";
 
 // Unit related constants
 const int I2C_ADDR_JOYSTICK = 0x52;
@@ -44,7 +49,7 @@ MFRC522 rfidReader(I2C_ADDR_MFRC522);
 String rfidTagUid[4];
 Adafruit_MPR121 touchSensor = Adafruit_MPR121();
 DFRobot_PAJ7620U2 gestureSensor;
-Servo servo;
+ServoEasing servo;
 bool isDualButtonConnected = false;
 bool isLightSensorConnected = false;
 bool isServoConnected = false;
@@ -101,10 +106,7 @@ const int OFFSET_BUTTON_3 = 2;
 const int NUM_BUTTONS = 6;
 
 // ESP32 BLE Keyboard related variables
-// Note: the device name should be within 15 characters;
-// otherwise, macOS and iOS devices can't discover
-// https://github.com/T-vK/ESP32-BLE-Keyboard/issues/51#issuecomment-733886764
-BleKeyboard bleKeyboard("alt. controller");
+BleKeyboard bleKeyboard(DEVICE_NAME.c_str());
 bool isConnected = false;
 bool isSending = false;
 
@@ -133,7 +135,8 @@ void handleOutputRequest() {
     switch (unitOnPortB) {
       // val: servo angle in degree, between 0 and 180
       case UNIT_SERVO:
-        servo.write(val);
+        // target degree, degrees per second
+        servo.startEaseTo(val, 180, START_UPDATE_BY_INTERRUPT);
         break;
 
       // val: on duration in ms, between 0 and 100
@@ -243,7 +246,7 @@ void setup() {
   M5.Lcd.setCursor(0, LAYOUT_LINE_HEIGHT);
   M5.Lcd.println(VERSION_STRING);
 
-  preferences.begin("alt. controller", false);
+  preferences.begin(DEVICE_NAME.c_str(), false);
   unitOnPortB = preferences.getInt("unitOnPortB", UNIT_NONE);
   distRangeMin = preferences.getInt("distRangeMin", DIST_RANGE_MIN);
   distRangeMax = preferences.getInt("distRangeMax", DIST_RANGE_MAX);
@@ -280,6 +283,7 @@ void setup() {
   if (rangingSensor.init()) {
     isRangingSensorConnected = true;
     rangingSensor.setMeasurementTimingBudget(20000);
+    rangingSensor.startContinuous();
   }
 
   if (gasSensor.begin()) {
@@ -625,7 +629,8 @@ void updateFlagsRegardingPortB() {
       isVibratorConnected = false;
       break;
     case UNIT_SERVO:
-      servo.attach(SERVO_PIN, Servo::CHANNEL_NOT_ATTACHED);
+      servo.attach(SERVO_PIN, 90);
+      servo.setEasingType(EASE_CUBIC_IN_OUT);
       isDualButtonConnected = false;
       isLightSensorConnected = false;
       isServoConnected = true;
@@ -880,7 +885,7 @@ void handleJoystick(bool updateRequested) {
 void handleRangingSensor(bool updateRequested) {
   static int lastValue = -1;
 
-  int range = constrain(rangingSensor.readRangeSingleMillimeters(),
+  int range = constrain(rangingSensor.readRangeContinuousMillimeters(),
                         distRangeMin, distRangeMax);
 
   // convert to 11 steps
