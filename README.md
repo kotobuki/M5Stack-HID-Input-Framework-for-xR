@@ -41,25 +41,22 @@
 
 The connected Unit(s) input is transmitted on three different channels: analog, joystick, and buttons. The analog and joystick channels can handle up to one sensor Unit input for each at once, and the buttons channel can handle up to six button inputs simultaneously.
 
-:pushpin: **We should check all possible combinations in the following table.**
-
-| Pattern \ Unit | Gesture | Joystick | Dual Button | Touch  | RFID   | Gas    | Ranging | Light  | Servo/Vibrator |
-| :------------- | :------ | :------- | :---------- | :----- | :----- | :----- | :------ | :----- | :------------- |
-| A              | :bulb:  |          |             |        |        | :bulb: |         |        | :bulb:         |
-| B              | :bulb:  |          |             |        |        |        | :bulb:  |        | :bulb:         |
-| C              | :bulb:  |          |             |        |        |        |         | :bulb: |                |
-| D              |         | :bulb:   | :bulb:      | :bulb: |        | :bulb: |         |        |                |
-| E              |         | :bulb:   | :bulb:      | :bulb: |        |        | :bulb:  |        |                |
-| F              |         | :bulb:   | :bulb:      | :bulb: |        |        |         |        |                |
-| G              |         | :bulb:   | :bulb:      |        | :bulb: | :bulb: |         |        |                |
-| H              |         | :bulb:   | :bulb:      |        | :bulb: |        | :bulb:  |        |                |
-| I              |         | :bulb:   | :bulb:      |        | :bulb: |        |         |        |                |
-| J              |         | :bulb:   |             | :bulb: |        | :bulb: |         |        | :bulb:         |
-| K              |         | :bulb:   |             | :bulb: |        |        | :bulb:  |        | :bulb:         |
-| L              |         | :bulb:   |             | :bulb: |        |        |         | :bulb: |                |
-| M              |         | :bulb:   |             |        | :bulb: | :bulb: |         |        | :bulb:         |
-| N              |         | :bulb:   |             |        | :bulb: |        | :bulb:  |        | :bulb:         |
-| O              |         | :bulb:   |             |        | :bulb: |        |         | :bulb: |                |
+| Pattern \ Unit | Gesture | Joystick | Touch  | RFID   | Gas    | Ranging | Dual Button | Light  | Servo/Vibrator |
+| :------------- | :------ | :------- | :----- | :----- | :----- | :------ | :---------- | :----- | :------------- |
+| A              | :bulb:  |          |        |        | :bulb: |         |             |        | :bulb:         |
+| B              | :bulb:  |          |        |        |        | :bulb:  |             |        | :bulb:         |
+| C              | :bulb:  |          |        |        |        |         |             | :bulb: |                |
+| D              |         | :bulb:   | :bulb: |        | :bulb: |         | :bulb:      |        |                |
+| E              |         | :bulb:   | :bulb: |        |        | :bulb:  | :bulb:      |        |                |
+| F              |         | :bulb:   |        | :bulb: | :bulb: |         | :bulb:      |        |                |
+| G              |         | :bulb:   |        | :bulb: |        | :bulb:  | :bulb:      |        |                |
+| H              |         | :bulb:   | :bulb: |        | :bulb: |         |             |        | :bulb:         |
+| I              |         | :bulb:   | :bulb: |        |        | :bulb:  |             |        | :bulb:         |
+| J              |         | :bulb:   | :bulb: |        |        |         |             | :bulb: |                |
+| K              |         | :bulb:   |        | :bulb: | :bulb: |         |             |        | :bulb:         |
+| L              |         | :bulb:   |        | :bulb: |        | :bulb:  |             |        | :bulb:         |
+| M              |         | :bulb:   |        | :bulb: |        |         |             | :bulb: |                |
+| `Port`         | `A`     | `A`      | `A`    | `A`    | `A`    | `A`     | `B`         | `B`    | `B`            |
 
 #### Notes
 
