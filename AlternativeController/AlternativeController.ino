@@ -14,7 +14,7 @@
 #include "MFRC522_I2C.h"
 #include "ServoEasing.hpp"
 
-const String VERSION_STRING = "v2.0.0-beta.1";
+const String VERSION_STRING = "v2.0.0-beta.2";
 
 // Note: the device name should be within 15 characters;
 // otherwise, macOS and iOS devices can't discover
@@ -35,12 +35,18 @@ const int ECO2_RANGE_MIN = 400;
 const int ECO2_RANGE_MAX = 2000;
 const int UNIT_NONE = 0;
 const int UNIT_DUAL_BUTTON = 1;
-const int UNIT_LIGHT = 2;
+const int UNIT_ANALOG_IN = 2;
 const int UNIT_SERVO = 3;
 const int UNIT_VIBRATOR = 4;
 const int UNIT_FIRST = UNIT_NONE;
 const int UNIT_LAST = UNIT_VIBRATOR;
 const int SERVO_PIN = PIN_PORT_B_B;
+const int VIBRATOR_PIN = PIN_PORT_B_B;
+
+// Choose the last LEDC channel to avoid conflict with the timer used for the
+// servo
+// https://github.com/madhephaestus/ESP32Servo/blob/6807249e7c4f48e082a0fd4ef485dfd13df0cc6b/src/ESP32PWM.cpp#L261-L277
+const int LEDC_CHANNEL_FOR_VIBRATOR = 15;
 
 // Unit related variables
 VL53L0X rangingSensor;
@@ -51,7 +57,7 @@ Adafruit_MPR121 touchSensor = Adafruit_MPR121();
 DFRobot_PAJ7620U2 gestureSensor;
 ServoEasing servo;
 bool isDualButtonConnected = false;
-bool isLightSensorConnected = false;
+bool isAnalogSensorConnected = false;
 bool isServoConnected = false;
 bool isVibratorConnected = false;
 bool isJoystickConnected = false;
@@ -142,15 +148,17 @@ void handleOutputRequest() {
       // val: on duration in ms, between 0 and 100
       case UNIT_VIBRATOR:
         val = constrain(val, 0, 100);
-        digitalWrite(PIN_PORT_B_B, HIGH);
+        // Drive the VIBRATOR with 12.5% power to avoid unwanted reboot due to
+        // power failures
+        ledcWrite(LEDC_CHANNEL_FOR_VIBRATOR, 128);
         delay(val);
-        digitalWrite(PIN_PORT_B_B, LOW);
+        ledcWrite(LEDC_CHANNEL_FOR_VIBRATOR, 0);
         break;
 
       default:
         server.send(404, "text/plain",
                     "Requests are only accepted when SERVO or VIBRATOR is "
-                    "selected for port B.");
+                    "selected for Port B.");
         return;
         break;
     }
@@ -207,16 +215,16 @@ void setup() {
   M5.Lcd.setCursor(64, 200);
   M5.Lcd.print("Press to setup Wi-Fi");
 
-  int count = 3;
-  while (0 < count) {
+  int numOfRetriesRemaining = 3;
+  while (0 < numOfRetriesRemaining) {
     M5.update();
     if (M5.BtnA.isPressed()) {
       break;
     }
 
     M5.Lcd.setCursor(64, 180);
-    M5.Lcd.print(count);
-    count--;
+    M5.Lcd.print(numOfRetriesRemaining);
+    numOfRetriesRemaining--;
     delay(1000);
   }
 
@@ -274,9 +282,16 @@ void setup() {
     isTouchSensorConnected = true;
   }
 
-  if (gestureSensor.begin() == 0) {
-    gestureSensor.setGestureHighRate(true);
-    isGestureSensorConnected = true;
+  numOfRetriesRemaining = 5;
+  while (0 < numOfRetriesRemaining) {
+    if (gestureSensor.begin() == 0) {
+      isGestureSensorConnected = true;
+      gestureSensor.setGestureHighRate(true);
+      break;
+    }
+
+    numOfRetriesRemaining--;
+    delay(100);
   }
 
   rangingSensor.setTimeout(500);
@@ -361,7 +376,7 @@ void loop() {
     handleGasSensor(requestToSend);
   } else if (isRangingSensorConnected) {
     handleRangingSensor(requestToSend);
-  } else if (isLightSensorConnected) {
+  } else if (isAnalogSensorConnected) {
     handleAnalogInput(requestToSend);
   }
 
@@ -375,9 +390,10 @@ void loop() {
   if (currentScreenMode == SCREEN_MAIN) {
     M5.Lcd.setTextSize(1);
     M5.Lcd.setCursor(0, 200);
-    M5.Lcd.printf("%s", ESP.getSdkVersion());
-    M5.Lcd.setCursor(160, 200);
-    M5.Lcd.printf("%3d ms", elapsed);
+    M5.Lcd.printf("SDK: %s | ", ESP.getSdkVersion());
+    // M5.Lcd.setCursor(160, 200);
+    M5.Lcd.printf("Loop: %3d ms | ", elapsed);
+    M5.Lcd.printf("Bat: %3d %%", M5.Power.getBatteryLevel());
     M5.Lcd.setTextSize(2);
   }
 
@@ -602,45 +618,57 @@ void handleButtons() {
   }
 }
 
-void updateFlagsRegardingPortB() {
-  pinMode(PIN_PORT_B_A, INPUT);
-  pinMode(PIN_PORT_B_B, INPUT);
+void attachVibrator() {
+  ledcSetup(LEDC_CHANNEL_FOR_VIBRATOR, 10000, 8);
+  ledcAttachPin(VIBRATOR_PIN, LEDC_CHANNEL_FOR_VIBRATOR);
+}
 
+void detachVibrator() { ledcDetachPin(VIBRATOR_PIN); }
+
+void updateFlagsRegardingPortB() {
   switch (unitOnPortB) {
     case UNIT_NONE:
       servo.detach();
+      detachVibrator();
       isDualButtonConnected = false;
-      isLightSensorConnected = false;
+      isAnalogSensorConnected = false;
       isServoConnected = false;
       isVibratorConnected = false;
       break;
     case UNIT_DUAL_BUTTON:
       servo.detach();
+      detachVibrator();
+      pinMode(PIN_PORT_B_A, INPUT);
+      pinMode(PIN_PORT_B_B, INPUT);
       isDualButtonConnected = true;
-      isLightSensorConnected = false;
+      isAnalogSensorConnected = false;
       isServoConnected = false;
       isVibratorConnected = false;
       break;
-    case UNIT_LIGHT:
+    case UNIT_ANALOG_IN:
       servo.detach();
+      detachVibrator();
+      pinMode(PIN_PORT_B_A, INPUT);
+      pinMode(PIN_PORT_B_B, INPUT);
       isDualButtonConnected = false;
-      isLightSensorConnected = true;
+      isAnalogSensorConnected = true;
       isServoConnected = false;
       isVibratorConnected = false;
       break;
     case UNIT_SERVO:
+      detachVibrator();
       servo.attach(SERVO_PIN, 90);
       servo.setEasingType(EASE_CUBIC_IN_OUT);
       isDualButtonConnected = false;
-      isLightSensorConnected = false;
+      isAnalogSensorConnected = false;
       isServoConnected = true;
       isVibratorConnected = false;
       break;
     case UNIT_VIBRATOR:
       servo.detach();
-      pinMode(PIN_PORT_B_B, OUTPUT);
+      attachVibrator();
       isDualButtonConnected = false;
-      isLightSensorConnected = false;
+      isAnalogSensorConnected = false;
       isServoConnected = false;
       isVibratorConnected = true;
       break;
@@ -667,7 +695,10 @@ void drawMainScreen() {
   M5.Lcd.print(joystickStatus);
 
   M5.Lcd.setCursor(0, LAYOUT_BUTTONS_CH_TOP);
-  M5.Lcd.print("BUTTONS:");
+  if (isDualButtonConnected || isTouchSensorConnected ||
+      isRfidReaderConnected) {
+    M5.Lcd.print("BUTTONS:");
+  }
 
   if (isDualButtonConnected) {
     M5.Lcd.setCursor(0, LAYOUT_BUTTONS_CH_TOP + LAYOUT_LINE_HEIGHT);
@@ -689,8 +720,8 @@ void drawPreferencesScreen() {
     case UNIT_DUAL_BUTTON:
       M5.Lcd.print("Port B: DUAL BUTTON");
       break;
-    case UNIT_LIGHT:
-      M5.Lcd.print("Port B: LIGHT      ");
+    case UNIT_ANALOG_IN:
+      M5.Lcd.print("Port B: ANALOG IN  ");
       break;
     case UNIT_SERVO:
       M5.Lcd.print("Port B: SERVO      ");

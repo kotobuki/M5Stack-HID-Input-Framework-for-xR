@@ -10,6 +10,7 @@
 
 - [Mini Dual Button Unit](https://shop.m5stack.com/collections/m5-unit/products/mini-dual-button-unit)
 - [Light Sensor Unit](https://shop.m5stack.com/collections/m5-unit/products/light-sensor-unit)
+- [Mini Angle Unit](https://shop.m5stack.com/products/angle-unit)
 - [I2C Joystick Unit V1.1](https://shop.m5stack.com/collections/m5-sensor/products/i2c-joystick-unit-v1-1-mega8a)
 - [Distance Ranging Sensor Unit](https://shop.m5stack.com/products/tof-sensor-unit)
 - [TVOC/eCO2 Gas Sensor Unit](https://shop.m5stack.com/products/tvoc-eco2-gas-unit-sgp30)
@@ -41,22 +42,22 @@
 
 The connected Unit(s) input is transmitted on three different channels: analog, joystick, and buttons. The analog and joystick channels can handle up to one sensor Unit input for each at once, and the buttons channel can handle up to six button inputs simultaneously.
 
-| Pattern \ Unit | Gesture | Joystick | Touch  | RFID   | Gas    | Ranging | Dual Button | Light  | Servo/Vibrator |
-| :------------- | :------ | :------- | :----- | :----- | :----- | :------ | :---------- | :----- | :------------- |
-| A              | :bulb:  |          |        |        | :bulb: |         |             |        | :bulb:         |
-| B              | :bulb:  |          |        |        |        | :bulb:  |             |        | :bulb:         |
-| C              | :bulb:  |          |        |        |        |         |             | :bulb: |                |
-| D              |         | :bulb:   | :bulb: |        | :bulb: |         | :bulb:      |        |                |
-| E              |         | :bulb:   | :bulb: |        |        | :bulb:  | :bulb:      |        |                |
-| F              |         | :bulb:   |        | :bulb: | :bulb: |         | :bulb:      |        |                |
-| G              |         | :bulb:   |        | :bulb: |        | :bulb:  | :bulb:      |        |                |
-| H              |         | :bulb:   | :bulb: |        | :bulb: |         |             |        | :bulb:         |
-| I              |         | :bulb:   | :bulb: |        |        | :bulb:  |             |        | :bulb:         |
-| J              |         | :bulb:   | :bulb: |        |        |         |             | :bulb: |                |
-| K              |         | :bulb:   |        | :bulb: | :bulb: |         |             |        | :bulb:         |
-| L              |         | :bulb:   |        | :bulb: |        | :bulb:  |             |        | :bulb:         |
-| M              |         | :bulb:   |        | :bulb: |        |         |             | :bulb: |                |
-| `Port`         | `A`     | `A`      | `A`    | `A`    | `A`    | `A`     | `B`         | `B`    | `B`            |
+| Pattern \ Unit | Gesture | Joystick | Touch  | RFID   | Gas    | Ranging | Dual Button | Analog In | Servo/Vibrator |
+| :------------- | :------ | :------- | :----- | :----- | :----- | :------ | :---------- | :-------- | :------------- |
+| A              | :bulb:  |          |        |        | :bulb: |         |             |           | :bulb:         |
+| B              | :bulb:  |          |        |        |        | :bulb:  |             |           | :bulb:         |
+| C              | :bulb:  |          |        |        |        |         |             | :bulb:    |                |
+| D              |         | :bulb:   | :bulb: |        | :bulb: |         | :bulb:      |           |                |
+| E              |         | :bulb:   | :bulb: |        |        | :bulb:  | :bulb:      |           |                |
+| F              |         | :bulb:   |        | :bulb: | :bulb: |         | :bulb:      |           |                |
+| G              |         | :bulb:   |        | :bulb: |        | :bulb:  | :bulb:      |           |                |
+| H              |         | :bulb:   | :bulb: |        | :bulb: |         |             |           | :bulb:         |
+| I              |         | :bulb:   | :bulb: |        |        | :bulb:  |             |           | :bulb:         |
+| J              |         | :bulb:   | :bulb: |        |        |         |             | :bulb:    |                |
+| K              |         | :bulb:   |        | :bulb: | :bulb: |         |             |           | :bulb:         |
+| L              |         | :bulb:   |        | :bulb: |        | :bulb:  |             |           | :bulb:         |
+| M              |         | :bulb:   |        | :bulb: |        |         |             | :bulb:    |                |
+| `Port`         | `A`     | `A`      | `A`    | `A`    | `A`    | `A`     | `B`         | `B`       | `B`            |
 
 #### Notes
 
@@ -90,7 +91,7 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 
 1. Choose a pattern from the table above and connect Unit(s) to your M5Stack controller (e.g., M5Stack FIRE)
 2. Power on your M5Stack controller
-3. If you want to use Dual Button, Light Sensor, or RFID reader, please refer to the "How to setup" section and setup
+3. If you want to use a Unit to be connected to Port B, please refer to the "How to setup" section and setup (Units to be connected to Port A will be recognized automatically)
 4. Connect the controller as a Bluetooth device to your device (please follow standard instruction for the device)
 5. Open the [IOFrameworkWidget (BLE and Wi-Fi)](https://gallery.styly.cc/scene/dd6b5c48-bb91-46e6-ab01-0f964d96de24) scene in a browser and bring the browser frontmost
 6. Press the `Send` (C) button to start sending
@@ -106,9 +107,11 @@ The connected Unit(s) input is transmitted on three different channels: analog, 
 1. Press the `Setup` (A) button to enter the preferences screen
 2. Press the `Next` (C) button (if needed) to choose the `PORT B: NONE` line
 3. Press the `Go` (B) button
-4. Press the `-` (A) or `+` (C) button to be matched to the device connected to the Port B (i.e., `DUAL BUTTON`, `LIGHT`, `SERVO` or `VIBRATOR`)
+4. Press the `-` (A) or `+` (C) button to be matched to the device connected to the Port B (i.e., `DUAL BUTTON`, `ANALOG IN`[^ANALOG_IN], `SERVO` or `VIBRATOR`)
 5. Press the `Done` (B) button
 6. Press the `Exit` (A) button to back to the main screen
+
+[^ANALOG_IN]: If you want to connect Units to be connected to Port B and use `A.OUT` such as LIGHT, ANGLE etc., please choose this option.
 
 #### RFID Tags
 
