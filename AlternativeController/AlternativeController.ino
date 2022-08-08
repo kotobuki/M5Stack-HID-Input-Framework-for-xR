@@ -14,7 +14,7 @@
 #include "MFRC522_I2C.h"
 #include "ServoEasing.hpp"
 
-const String VERSION_STRING = "v2.0.0-beta.2";
+const String VERSION_STRING = "v2.0.0-beta.3";
 
 // Note: the device name should be within 15 characters;
 // otherwise, macOS and iOS devices can't discover
@@ -113,25 +113,29 @@ const int NUM_BUTTONS = 6;
 
 // ESP32 BLE Keyboard related variables
 BleKeyboard bleKeyboard(DEVICE_NAME.c_str());
-bool isConnected = false;
-bool isSending = false;
+bool isBluetoothConnected = false;
+bool isSendingKeyboardEvents = false;
 
 // Web server related variables
 WebServer server(80);
 
-int analogValueForReporting = 0;
-String joystickValueForReporting = "Center";
-int buttonValuesForReporting[NUM_BUTTONS];
+volatile int analogValueForReporting = 0;
+volatile char joystickValueForReporting[32];
+volatile int buttonValuesForReporting[NUM_BUTTONS];
+
+SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
 
 void handleInputRequest() {
-  String message = "";
-  message += String(analogValueForReporting) + ",";
-  message += joystickValueForReporting + ",";
-  message += String(buttonValuesForReporting[0]);
-  for (int i = 1; i < NUM_BUTTONS; i++) {
-    message += "," + String(buttonValuesForReporting[i]);
-  }
+  static char message[100];
+
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  sprintf(message, "%d,%s,%d,%d,%d,%d,%d,%d", analogValueForReporting,
+          joystickValueForReporting, buttonValuesForReporting[0],
+          buttonValuesForReporting[1], buttonValuesForReporting[2],
+          buttonValuesForReporting[3], buttonValuesForReporting[4],
+          buttonValuesForReporting[5]);
   server.send(200, "text/csv", message);
+  xSemaphoreGive(mutex);
 }
 
 void handleOutputRequest() {
@@ -294,9 +298,13 @@ void setup() {
     delay(100);
   }
 
-  rangingSensor.setTimeout(500);
   if (rangingSensor.init()) {
     isRangingSensorConnected = true;
+
+    // Set timeout to 25 ms
+    rangingSensor.setTimeout(25);
+
+    // Set measurement timing budget to 20000 us = 20 ms
     rangingSensor.setMeasurementTimingBudget(20000);
     rangingSensor.startContinuous();
   }
@@ -331,6 +339,8 @@ void setup() {
     server.onNotFound(handleNotFound);
 
     server.begin();
+    xTaskCreatePinnedToCore(serverLoop, "serverLoop", 8192, NULL,
+                            CONFIG_ARDUINO_UDP_TASK_PRIORITY, NULL, 0);
   }
 
   M5.Lcd.clear();
@@ -344,12 +354,8 @@ void loop() {
   M5.update();
   handleButtons();
 
-  isConnected = bleKeyboard.isConnected();
-  bool requestToSend = isConnected && isSending;
-
-  if (WiFi.status() == WL_CONNECTED) {
-    server.handleClient();
-  }
+  isBluetoothConnected = bleKeyboard.isConnected();
+  bool requestToSend = isBluetoothConnected && isSendingKeyboardEvents;
 
   if (isGestureSensorConnected) {
     // It uses both the joystick channel and the buttons channel
@@ -391,7 +397,6 @@ void loop() {
     M5.Lcd.setTextSize(1);
     M5.Lcd.setCursor(0, 200);
     M5.Lcd.printf("SDK: %s | ", ESP.getSdkVersion());
-    // M5.Lcd.setCursor(160, 200);
     M5.Lcd.printf("Loop: %3d ms | ", elapsed);
     M5.Lcd.printf("Bat: %3d %%", M5.Power.getBatteryLevel());
     M5.Lcd.setTextSize(2);
@@ -399,6 +404,17 @@ void loop() {
 
   if (elapsed < LOOP_INTERVAL) {
     delay(LOOP_INTERVAL - elapsed);
+  } else {
+    delay(1);
+  }
+}
+
+void serverLoop(void *parameters) {
+  while (true) {
+    vTaskDelay(1);
+    if (WiFi.status() == WL_CONNECTED) {
+      server.handleClient();
+    }
   }
 }
 
@@ -468,11 +484,11 @@ void handleButtons() {
   if (M5.BtnC.wasPressed()) {
     switch (currentScreenMode) {
       case SCREEN_MAIN:
-        if (isSending) {
-          isSending = false;
+        if (isSendingKeyboardEvents) {
+          isSendingKeyboardEvents = false;
           drawButtons(currentScreenMode);
         } else {
-          isSending = true;
+          isSendingKeyboardEvents = true;
           drawButtons(currentScreenMode);
         }
         break;
@@ -680,12 +696,12 @@ void updateFlagsRegardingPortB() {
 void drawMainScreen() {
   if (WiFi.status() == WL_CONNECTED) {
     M5.Lcd.setCursor(0, 0);
-    M5.Lcd.printf("B: %s | W: %s", isConnected ? "<->" : "-X-",
+    M5.Lcd.printf("B: %s | W: %s", isBluetoothConnected ? "<->" : "-X-",
                   WiFi.localIP().toString().c_str());
   } else {
     M5.Lcd.setCursor(0, 0);
     M5.Lcd.printf("Bluetooth: %s",
-                  isConnected ? "Connected   " : "Disconnected");
+                  isBluetoothConnected ? "Connected   " : "Disconnected");
   }
 
   M5.Lcd.setCursor(0, LAYOUT_ANALOG_CH_TOP);
@@ -810,8 +826,11 @@ void handleDualButton(bool updateRequested) {
 
   wasRedButtonPressed = isRedButtonPressed;
   wasBlueButtonPressed = isBlueButtonPressed;
+
+  xSemaphoreTake(mutex, portMAX_DELAY);
   buttonValuesForReporting[KEY_ID_RED_BUTTON] = isRedButtonPressed;
   buttonValuesForReporting[KEY_ID_BLUE_BUTTON] = isBlueButtonPressed;
+  xSemaphoreGive(mutex);
 }
 
 void handleAnalogInput(bool updateRequested) {
@@ -829,7 +848,10 @@ void handleAnalogInput(bool updateRequested) {
     }
     lastAnalogValue = currentAnalogValue;
   }
+
+  xSemaphoreTake(mutex, portMAX_DELAY);
   analogValueForReporting = currentAnalogValue;
+  xSemaphoreGive(mutex);
 }
 
 void handleJoystick(bool updateRequested) {
@@ -892,32 +914,40 @@ void handleJoystick(bool updateRequested) {
     lastJoystickY = curJoystickY;
   }
 
+  xSemaphoreTake(mutex, portMAX_DELAY);
   if (curJoystickX == -1 && curJoystickY == 1) {
-    joystickValueForReporting = "Left-Up";
+    sprintf((char *)joystickValueForReporting, "Left-Up");
   } else if (curJoystickX == 0 && curJoystickY == 1) {
-    joystickValueForReporting = "Center-Up";
+    sprintf((char *)joystickValueForReporting, "Center-Up");
   } else if (curJoystickX == 1 && curJoystickY == 1) {
-    joystickValueForReporting = "Right-Up";
+    sprintf((char *)joystickValueForReporting, "Right-Up");
   } else if (curJoystickX == -1 && curJoystickY == 0) {
-    joystickValueForReporting = "Left";
+    sprintf((char *)joystickValueForReporting, "Left");
   } else if (curJoystickX == 0 && curJoystickY == 0) {
-    joystickValueForReporting = "Center";
+    sprintf((char *)joystickValueForReporting, "Center");
   } else if (curJoystickX == 1 && curJoystickY == 0) {
-    joystickValueForReporting = "Right";
+    sprintf((char *)joystickValueForReporting, "Right");
   } else if (curJoystickX == -1 && curJoystickY == -1) {
-    joystickValueForReporting = "Left-Down";
+    sprintf((char *)joystickValueForReporting, "Left-Down");
   } else if (curJoystickX == 0 && curJoystickY == -1) {
-    joystickValueForReporting = "Center-Down";
+    sprintf((char *)joystickValueForReporting, "Center-Down");
   } else if (curJoystickX == 1 && curJoystickY == -1) {
-    joystickValueForReporting = "Right-Down";
+    sprintf((char *)joystickValueForReporting, "Right-Down");
   }
+  xSemaphoreGive(mutex);
 }
 
 void handleRangingSensor(bool updateRequested) {
   static int lastValue = -1;
 
-  int range = constrain(rangingSensor.readRangeContinuousMillimeters(),
-                        distRangeMin, distRangeMax);
+  unsigned int readRange = rangingSensor.readRangeContinuousMillimeters();
+  // unsigned int readRange = rangingSensor.readRangeSingleMillimeters();
+  if (rangingSensor.timeoutOccurred()) {
+    // Ignore the reading since a timeout occurred
+    return;
+  }
+
+  int range = constrain(readRange, distRangeMin, distRangeMax);
 
   // convert to 11 steps
   int currentValue = map(range, distRangeMin, distRangeMax, 0, 10);
@@ -930,7 +960,10 @@ void handleRangingSensor(bool updateRequested) {
     }
     lastValue = currentValue;
   }
+
+  xSemaphoreTake(mutex, portMAX_DELAY);
   analogValueForReporting = currentValue;
+  xSemaphoreGive(mutex);
 }
 
 void handleGasSensor(bool updateRequested) {
@@ -952,7 +985,10 @@ void handleGasSensor(bool updateRequested) {
     }
     lastValue = currentValue;
   }
+
+  xSemaphoreTake(mutex, portMAX_DELAY);
   analogValueForReporting = currentValue;
+  xSemaphoreGive(mutex);
 }
 
 // Reference:
@@ -977,6 +1013,7 @@ void handleRFID(bool updateRequested) {
     }
 
     String curRfidTagUid = getRfidTagUidString();
+
     for (int i = 0; i < 4; i++) {
       if (rfidTagUid[i] == curRfidTagUid) {
         if (updateRequested) {
@@ -984,7 +1021,10 @@ void handleRFID(bool updateRequested) {
         }
         sprintf(buttonsStatus2, "RFID Tag:%d   ", i);
         lastRfidTag = i;
+
+        xSemaphoreTake(mutex, portMAX_DELAY);
         buttonValuesForReporting[i + OFFSET_BUTTON_3] = 1;
+        xSemaphoreGive(mutex);
         break;
       }
     }
@@ -1008,8 +1048,12 @@ void handleRFID(bool updateRequested) {
       if (currentScreenMode == SCREEN_MAIN) {
         sprintf(buttonsStatus2, "RFID Tag:None");
       }
-      lastRfidTag = -1;
+
+      xSemaphoreTake(mutex, portMAX_DELAY);
       buttonValuesForReporting[lastRfidTag + OFFSET_BUTTON_3] = 0;
+      xSemaphoreGive(mutex);
+
+      lastRfidTag = -1;
 
       delay(100);
       rfidReader.PICC_HaltA();
@@ -1061,7 +1105,9 @@ void handleTouchSensor(bool updateRequested) {
       }
     }
 
+    xSemaphoreTake(mutex, portMAX_DELAY);
     buttonValuesForReporting[i + OFFSET_BUTTON_3] = isPadTouched;
+    xSemaphoreGive(mutex);
   }
 
   lastTouched = currentlyTouched;
@@ -1124,7 +1170,11 @@ void handleGestureSensor(bool updateRequested) {
       lastUpdate = now;
       sprintf(joystickStatus, "GESTURE: %-14s",
               gestureSensor.gestureDescription(gesture));
-      joystickValueForReporting = gestureSensor.gestureDescription(gesture);
+
+      xSemaphoreTake(mutex, portMAX_DELAY);
+      sprintf((char *)joystickValueForReporting,
+              gestureSensor.gestureDescription(gesture).c_str());
+      xSemaphoreGive(mutex);
       break;
 
     // Not supported gestures and None
@@ -1140,7 +1190,10 @@ void handleGestureSensor(bool updateRequested) {
           bleKeyboard.release(KEYS_FOR_BUTTON_CH[4]);
         }
         wasLastGestureNone = true;
-        joystickValueForReporting = "None";
+
+        xSemaphoreTake(mutex, portMAX_DELAY);
+        sprintf((char *)joystickValueForReporting, "None");
+        xSemaphoreGive(mutex);
       }
       break;
   }
@@ -1153,7 +1206,7 @@ void drawButtons(int currentScreenMode) {
 
   switch (currentScreenMode) {
     case SCREEN_MAIN:
-      if (!isSending) {
+      if (!isSendingKeyboardEvents) {
         drawButton(LAYOUT_BTN_A_CENTER, "Setup");
         drawButton(LAYOUT_BTN_B_CENTER, "");
         drawButton(LAYOUT_BTN_C_CENTER, "Send");
