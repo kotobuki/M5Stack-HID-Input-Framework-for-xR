@@ -450,7 +450,7 @@ void updateFlagsRegardingPortB() {
 void drawMainScreen() {
   M5.Lcd.setCursor(0, 0);
   M5.Lcd.printf("Bluetooth: %s",
-                isConnected ? "Connected    " : "Disonnected  ");
+                isConnected ? "Connected    " : "Disconnected ");
 
   M5.Lcd.setCursor(0, LAYOUT_ANALOG_CH_TOP);
   M5.Lcd.print(analogStatus);
