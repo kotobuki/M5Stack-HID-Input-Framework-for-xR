@@ -234,14 +234,25 @@ Example:
 
 `GET` `http://192.168.0.10/output?val=123`
 
-## IOFrameworkManager for Unity
+## IOFrameworkSDK for Unity
+
+The SDK consists of components as follows.
+
+- `IOFrameworkManager` is a manager for the I/O Framework
+- `IOFrameworkTestUI` is a UI to test the framework
+- `IOFrameworkAnalogHandler` is a handler for events in the analog channel
+- `IOFrameworkJoystickHandler` is a handler for events in the joystick channel
+- `IOFrameworkButtonsHandler` is a handler for events in the buttons channel
+- `IOFrameworkGestureHandler` is a handler for events from a Gesture sensor (in both joystick and buttons channel)
+- `IOFrameworkOutputHandler` is a handler for events in the output channel via Wi-Fi
 
 ### Usage
 
-1. Import the `IOFrameworkWidget.unitypackage` file to your Unity project
-2. Add an FSM to a GameObject
-3. Add global transition(s) to the FSM to receive the input-related event(s)
-4. Add a `Send Event` action (with a `Set Event String Data` action if necessary) to a State to send the output or Wi-Fi-related event(s)
+1. Import the `IOFrameworkSDK.unitypackage` file to your Unity project
+2. Instantiate an `IOFrameworkManager`
+3. Instantiate an `IOFrameworkTestUI` if necessary
+4. Instantiate a handler from handlers in the SDK (e.g., `IOFrameworkAnalogHandler`)
+5. Navigate PlayMaker editor to the FSM of the handler and edit
 
 ### Input
 
@@ -269,6 +280,10 @@ Send events to `IOFrameworkManager: Event Handlers FSM`.
 - `SET OUTPUT VALUE REQUEST` String: output value
 
 ### Wi-Fi
+
+IOFrameworkManager broadcasts events to all FSMs.
+
+- `HTTP RESPONSE` String: HTTP response
 
 Send events to `IOFrameworkManager: Event Handlers FSM`.
 
