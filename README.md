@@ -1,5 +1,19 @@
 # I/O Framework for xR
 
+This project is a framework for xR creators to extend inputs and outputs easily beyond the capabilities of conventional devices.
+
+The framework consists of firmware for M5Stack and an SDK for Unity with the STYLY plugin. The M5Stack toolkit allows you to easily create IoT projects by connecting various sensors and actuators without soldering. The controller functions as a Bluetooth keyboard and a Wi-Fi server, sending keyboard events to a device such as a smartphone in response to input from sensors. Moreover, you can control actuators by sending HTTP requests to the controller.
+
+With this framework, you may be able to expand your imagination of the concept of xR and realize your ideas as works.
+
+---
+
+本プロジェクトは、xRクリエーターが、従来のデバイスの能力を超える入出力を簡単に拡張するためのフレームワークです。
+
+フレームワークは、M5Stack用のファームウェアと、STYLYプラグインを組み込んだUnity用のSDKで構成されています。M5Stackは、各種センサーやアクチュエーターをハンダづけなしで接続し、IoTプロジェクトを簡単に作成できるツールキットです。コントローラは、BluetoothキーボードおよびWi-Fiサーバーとして機能し、センサーからの入力に応じてキーボードイベントをスマートフォンなどのデバイスに送信します。さらに、コントローラにHTTPリクエストを送ることで、アクチュエータを制御できます。
+
+このフレームワークを使うことにより、xRの概念に対する想像力を膨らませ、アイデアを作品として実現できるかもしれません。
+
 ## Status
 
 :construction: Heavily work in progress; therefore, only for experimental purposes :construction:
